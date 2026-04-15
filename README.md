@@ -136,3 +136,7 @@ IAM_Assistant/
 - SSL is enabled on the ER6 connection
 - Query output is `|`-separated with a header row
 - Active auth object instances have `INACTIVE` = blank; superseded ones have `INACTIVE = 'X'`
+
+
+## Reference
+sapcli GitHub : https://github.com/jfilak/sapcli
