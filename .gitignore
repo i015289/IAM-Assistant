@@ -1,0 +1,8 @@
+# SAP connection credentials — never commit these
+.sapcli.env
+
+# Claude session data
+.claude/
+
+# macOS
+.DS_Store
