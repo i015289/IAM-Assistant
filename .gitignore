@@ -1,8 +1,8 @@
 # SAP connection credentials — never commit these
 .sapcli.env
 
-# Claude session data
-.claude/
+# Claude — exclude only non-shareable session data
+.claude/worktrees/
 
 # macOS
 .DS_Store
