@@ -22,11 +22,29 @@ This project lets you run natural-language IAM investigations against live ER6 d
    claude /Users/I015289/Joule_Workspace/IAM_Assistant
    ```
 
-2. **Verify MCP connectivity** — Claude Code will use the `er6` MCP tools automatically when the server is configured in `.mcp.json`.
+2. **Install the MCP ER6 server dependencies** inside the `sapcli-env` conda environment:
+   ```bash
+   conda run -n sapcli-env pip install -r mcp-server/requirements.txt
+   ```
+   The server script is `mcp-server/er6_mcp_server.py` and is already wired up in `.mcp.json`:
+   ```json
+   {
+     "mcpServers": {
+       "er6": {
+         "command": "conda",
+         "args": ["run", "--no-capture-output", "-n", "sapcli-env",
+                  "python", "<repo-root>/mcp-server/er6_mcp_server.py"]
+       }
+     }
+   }
+   ```
+   Update the absolute path in `.mcp.json` to match your local checkout if needed.
 
-3. **Fallback only — ensure `.sapcli.env` exists** if you need the `sapcli` CLI path (not committed to source control).
+3. **Verify MCP connectivity** — Claude Code will use the `er6` MCP tools automatically when the server is configured in `.mcp.json`.
 
-4. **Test fallback connectivity**:
+4. **Fallback only — ensure `.sapcli.env` exists** if you need the `sapcli` CLI path (not committed to source control).
+
+5. **Test fallback connectivity**:
    ```bash
    source .sapcli.env && conda run -n sapcli-env sapcli datapreview osql "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"
    ```
