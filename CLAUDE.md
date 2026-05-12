@@ -8,7 +8,20 @@ IAM (Identity & Access Management) analysis assistant that queries the SAP ABAP 
 
 ## Running Queries Against ER6
 
-### Setup
+**Always prefer the `er6` MCP tools over Bash/sapcli for ER6 queries.** The MCP server is the default and recommended way to access ER6.
+
+### Available MCP Tools (preferred)
+
+| Tool | Purpose |
+|------|---------|
+| `mcp__er6__query_sql` | Run ABAP Open SQL SELECT statements |
+| `mcp__er6__read_table_def` | Read DDIC table/structure definitions |
+| `mcp__er6__read_cds_view` | Read CDS view (DDLS) source |
+| `mcp__er6__read_class` | Read ABAP class source |
+| `mcp__er6__read_program` | Read ABAP program/report source |
+| `mcp__er6__list_package` | List objects in an ABAP package |
+
+### Bash/sapcli Fallback (only if MCP tool is insufficient)
 
 1. Activate the connection environment:
    ```bash
@@ -22,10 +35,8 @@ IAM (Identity & Access Management) analysis assistant that queries the SAP ABAP 
 
 ### Key Notes
 
-- sapcli is installed in the conda environment `sapcli-env`
-- Connection credentials and host are defined in `.sapcli.env` (not committed)
-- Output is `|`-separated, similar to CSV with a header row
 - SQL dialect is **ABAP Open SQL** — use `UP TO N ROWS` for row limits (not `TOP` or `FETCH FIRST`)
+- Output from sapcli is `|`-separated, similar to CSV with a header row
 - Authentication: username/password (`ANZEIGER`/`display`), read-only access, SSL enabled
 
 ## Data Dictionary

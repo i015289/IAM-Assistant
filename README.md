@@ -11,8 +11,9 @@ This project lets you run natural-language IAM investigations against live ER6 d
 | Requirement | Details |
 |-------------|---------|
 | Claude Code | `claude` CLI installed and authenticated |
-| conda | `sapcli-env` environment with `sapcli` installed |
-| `.sapcli.env` | Connection credentials for ER6 (not committed — see setup below) |
+| MCP server | `er6` MCP server configured in `.mcp.json` (primary query path) |
+| conda | `sapcli-env` environment with `sapcli` installed (fallback only) |
+| `.sapcli.env` | Connection credentials for ER6 (not committed — fallback only) |
 
 ## Setup
 
@@ -21,21 +22,29 @@ This project lets you run natural-language IAM investigations against live ER6 d
    claude /Users/I015289/Joule_Workspace/IAM_Assistant
    ```
 
-2. **Ensure `.sapcli.env` exists** in the project root with the ER6 connection settings (host, user, password). This file is not committed to source control.
+2. **Verify MCP connectivity** — Claude Code will use the `er6` MCP tools automatically when the server is configured in `.mcp.json`.
 
-3. **Verify the conda environment**:
-   ```bash
-   conda run -n sapcli-env sapcli --version
-   ```
+3. **Fallback only — ensure `.sapcli.env` exists** if you need the `sapcli` CLI path (not committed to source control).
 
-4. **Test connectivity**:
+4. **Test fallback connectivity**:
    ```bash
    source .sapcli.env && conda run -n sapcli-env sapcli datapreview osql "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"
    ```
 
 ## Running Queries
 
-All queries go through `sapcli` in the `sapcli-env` conda environment:
+**Preferred:** Claude Code uses the `er6` MCP tools directly — no shell commands needed. The MCP server exposes:
+
+| Tool | Purpose |
+|------|---------|
+| `mcp__er6__query_sql` | Run ABAP Open SQL SELECT statements |
+| `mcp__er6__read_table_def` | Read DDIC table/structure definitions |
+| `mcp__er6__read_cds_view` | Read CDS view (DDLS) source |
+| `mcp__er6__read_class` | Read ABAP class source |
+| `mcp__er6__read_program` | Read ABAP program/report source |
+| `mcp__er6__list_package` | List objects in an ABAP package |
+
+**Fallback** (only if MCP is unavailable):
 
 ```bash
 source .sapcli.env
@@ -132,7 +141,7 @@ IAM_Assistant/
 
 ## Notes
 
-- Access is **read-only** (user `ANZEIGER`/`display`)
-- SSL is enabled on the ER6 connection
-- Query output is `|`-separated with a header row
+- Access is **read-only** (user `ANZEIGER`/`display`), SSL enabled
+- MCP tools are the preferred query path — `sapcli` is a fallback only
+- `sapcli` query output is `|`-separated with a header row
 - Active auth object instances have `INACTIVE` = blank; superseded ones have `INACTIVE = 'X'`

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "er6": {
+      "command": "conda",
+      "args": [
+        "run",
+        "--no-capture-output",
+        "-n",
+        "sapcli-env",
+        "python",
+        "/Users/I015289/Joule_Workspace/iam-assistant/mcp-server/er6_mcp_server.py"
+      ]
+    }
+  }
+}

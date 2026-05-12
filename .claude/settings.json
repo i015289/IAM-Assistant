@@ -1,12 +1,17 @@
 {
   "permissions": {
     "allow": [
-      "Bash(source .sapcli.env*)",
-      "Bash(source .sapcli.env && conda run -n sapcli-env sapcli *)",
-      "Bash(conda run -n sapcli-env sapcli *)",
       "Read(*)",
       "mcp__gtnc__gtnc_check_data_element",
-      "mcp__gtnc__gtnc_get_field_details"
+      "mcp__gtnc__gtnc_get_field_details",
+      "Bash(git pull)",
+      "mcp__er6__query_sql",
+      "mcp__er6__read_table_def",
+      "mcp__er6__read_cds_view",
+      "mcp__er6__read_class",
+      "mcp__er6__read_program",
+      "mcp__er6__list_package"
     ]
-  }
+  },
+  "enableAllProjectMcpServers": true
 }
