@@ -7,25 +7,29 @@ description: Use this skill when the user asks about Cash Management IAM, bank a
 
 When this skill is activated, greet the user and offer the following prompt suggestions before waiting for their input:
 
-> **Cash Management IAM — ready. Here are some things you can ask:**
+> **Cash Management IAM — Example Prompt Library**
 >
-> **SoD & 4-eyes validation**
-> 1. Does any single BRT combine both Submit and Approve on bank account applications? *(self-approval risk)*
-> 2. Can a user who creates bank accounts (`F1366_TRAN`) also approve change requests (`F6264_TRAN`)? *(creator = approver risk)*
-> 3. Which catalogs grant write access to `F_CLM_BAOR` — and do any of them also grant `ACTVT 31` (Approve)?
+> Here are some example prompts for Cash Management IAM analysis, authorization validation, SoD checks, and IAM health checks.
 >
-> **Auth object & activity completeness**
-> 4. Verify `F9017_TRAN` (Manage Interest Conditions) has the correct activities on `F_CLM_BAIC` — should Delete (06) be present?
-> 5. Why does `F9016_TRAN` (Schedule Interest Jobs) have `F_CLM_BAI` with write activities (01/02) — is that expected for a scheduling app?
-> 6. What is ACTVT `69` on `F_CLM_BAOR`, and which apps use it?
+> **Authorization Object & Catalog Design**
+> 1. For IAM App ID `<IAM_APP_ID>`, verify whether the authorization activity set is complete and aligned with the intended business process and application behavior.
+> 2. For Business Catalog `<BC_ID>`, review whether approval-related activities are correctly restricted to approval applications and protected from over-entitlement.
 >
-> **Catalog assignment checks**
-> 7. Are all apps in `SAP_FIN_BC_CM_BAM2_PC` correctly classified — are any display-only apps in the wrong (write) catalog?
-> 8. What catalog dependencies exist between the BAM2 and BAA catalogs — is there a required prerequisite chain for the bank account workflow?
-> 9. Which BRTs include `SAP_FIN_BC_CM_BAI_PC`, and is the interest management catalog correctly restricted to Cash Manager / Cash Specialist only?
+> **SoD & Four-Eyes Principle Validation**
+> 3. For IAM App ID `<IAM_APP_ID>`, analyze whether submit and approve capabilities are properly segregated across applications and roles.
+> 4. For Business Role or Catalog `<ROLE_ID / BC_ID>`, identify whether any access combination violates the four-eyes principle or introduces SoD risks.
 >
-> **Cross-catalog / BRT analysis**
-> 10. Show the full catalog footprint of `SAP_BR_CASH_SPECIALIST` — all catalogs and their apps.
+> **SU22 & Transport Validation**
+> 5. For IAM App ID `<IAM_APP_ID>`, validate whether SU22 updates or transport imports introduced unexpected authorization changes or activity sets.
+> 6. For transport `<TRANSPORT_ID>` and IAM App ID `<IAM_APP_ID>`, compare authorization defaults before and after deployment to identify inconsistencies or over-authorizations.
+>
+> **Catalog & BRT Structure Analysis**
+> 7. For Business Catalog `<BC_ID>`, analyze catalog dependencies, prerequisite relationships, and access overlaps.
+> 8. For Business Role `<ROLE_ID>`, provide the complete catalog and application footprint within the Cash Management IAM scope.
+>
+> **Regular IAM Health Checks**
+> 9. For IAM App ID `<IAM_APP_ID>`, run a full IAM health check including authorization objects, activity sets, catalog assignments, and BRT coverage.
+> 10. For Business Catalog `<BC_ID>`, validate whether read-only applications, approval activities, and critical authorizations are correctly designed and consistently implemented.
 
 
 
