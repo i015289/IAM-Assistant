@@ -1,6 +1,6 @@
 ---
 name: treasury-iam
-description: Use this skill when the user asks about Treasury IAM, apps in package CLOUD_FI_TR_IAM, FOE/BOE catalog assignments, SoD rules for T_DEAL_* authorization objects, or catalog splitting for Front Office / Back Office segregation.
+description: Use this skill when the user asks about Treasury IAM, apps in package CLOUD_FI_TR_IAM, FOE/BOE catalog assignments, SoD rules for T_DEAL_* authorization objects, catalog splitting for Front Office / Back Office segregation, or hedge request management SoD (T_TOE_HR, MOE vs Accountant role split).
 ---
 
 # Treasury IAM Skill
@@ -234,3 +234,122 @@ FUNCTION is_forbidden(trfct, actvt, catalog_type):
   IF catalog_type = 'BOE':
     RETURN (trfct='D2' AND actvt IN ('01','02','16','85','KU','VF'))
 ```
+
+---
+
+## Hedge Request Management SoD
+
+This section covers authorization design for hedge request management, governed by a
+**separate auth object `T_TOE_HR`** (independent of the `T_DEAL_*` objects above).
+
+### Auth Object T_TOE_HR
+
+Fields:
+- **HREQ_CAT** — Hedge request category
+- **ACTVT** — Activity
+
+### HREQ_CAT Values in Scope
+
+| HREQ_CAT | Meaning           |
+|----------|-------------------|
+| A        | Manual Designation |
+| D        | Dedesignation      |
+| G        | FX Hedge           |
+| O        | Offsetting         |
+| S        | FX Swap            |
+
+### ACTVT Values in Scope
+
+| ACTVT | Meaning     |
+|-------|-------------|
+| 01    | Create      |
+| 02    | Change      |
+| 03    | Display     |
+| 06    | Delete      |
+| 43    | Release     |
+| 85    | Reverse     |
+
+### User Role Split
+
+Two roles are relevant:
+
+| Role                 | Description                                                            | Catalog(s)                                    |
+|----------------------|------------------------------------------------------------------------|-----------------------------------------------|
+| **MOE** (front office) | Can execute all actions on hedge requests **except** release/reverse of dedesignation requests | `SAP_FIN_BC_HEDGE_MGT_PC`, `SAP_FIN_BC_TRM_HM_HR_FOE_PC` |
+| **Accountant**       | Can **only** release and reverse-release dedesignation requests         | `SAP_FIN_BC_TRM_HM_HR_ACCT_PC`                |
+
+### Forbidden Combinations
+
+#### MOE catalogs — these combinations must NOT appear in T_TOE_HR:
+
+| HREQ_CAT | ACTVT | Meaning                                  |
+|----------|-------|------------------------------------------|
+| A        | 43    | Release manual designation request       |
+| A        | 85    | Reverse manual designation request       |
+| D        | 43    | Release dedesignation request            |
+| D        | 85    | Reverse dedesignation request            |
+
+#### Accountant catalogs — these combinations must NOT appear in T_TOE_HR:
+
+| HREQ_CAT | ACTVT | Meaning                             |
+|----------|-------|-------------------------------------|
+| A        | 01    | Create manual designation request   |
+| A        | 02    | Change manual designation request   |
+| A        | 06    | Delete manual designation request   |
+| D        | 01    | Create dedesignation request        |
+| D        | 02    | Change dedesignation request        |
+| D        | 06    | Delete dedesignation request        |
+
+### Relevant Catalogs
+
+| Catalog ID                          | Role        | Notes                                    |
+|-------------------------------------|-------------|------------------------------------------|
+| `SAP_FIN_BC_HEDGE_MGT_PC`           | MOE         | General hedge management catalog         |
+| `SAP_FIN_BC_TRM_HM_HR_FOE_PC`       | MOE         | Hedge request front-office catalog       |
+| `SAP_FIN_BC_TRM_HM_HR_ACCT_PC`      | Accountant  | Hedge request accountant catalog         |
+
+### Workflow for Hedge Request SoD Validation
+
+#### Step H1 — Read T_TOE_HR Instances for an App
+
+```sql
+SELECT APP_ID, UUID, AUTH_OBJECT, STATUS, INACTIVE
+FROM APS_IAM_W_APPAUI
+WHERE APP_ID = '<APP_ID>' AND AUTH_OBJECT = 'T_TOE_HR'
+```
+
+Focus on instances where `INACTIVE` is blank.
+
+#### Step H2 — Read HREQ_CAT + ACTVT Values for an Instance
+
+```sql
+SELECT UUID, PARENT_ID, FIELD, LOW_VALUE, HIGH_VALUE, STATUS
+FROM APS_IAM_W_APPAUV
+WHERE APP_ID = '<APP_ID>'
+```
+
+Filter rows where `PARENT_ID` matches the T_TOE_HR instance UUID and `FIELD` is either
+`HREQ_CAT` or `ACTVT`.
+
+#### Step H3 — Evaluate Forbidden Combinations
+
+For each active T_TOE_HR instance, form the Cartesian product of all HREQ_CAT values ×
+all ACTVT values, then check against the relevant role's forbidden list.
+
+Report violations as:
+```
+APP_ID | AUTH_OBJECT | UUID | HREQ_CAT | ACTVT | Rule violated (MOE/Accountant)
+```
+
+### Quick Reference: Hedge Request Forbidden Combination Check
+
+```
+FUNCTION is_hr_forbidden(hreq_cat, actvt, role):
+  IF role = 'MOE':
+    RETURN hreq_cat IN ('A','D') AND actvt IN ('43','85')
+  IF role = 'Accountant':
+    RETURN hreq_cat IN ('A','D') AND actvt IN ('01','02','06')
+```
+
+Note: Categories G, O, S are not involved in the SoD restriction — both roles may freely
+hold all activities for those categories.

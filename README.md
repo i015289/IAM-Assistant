@@ -81,6 +81,7 @@ Activates the Treasury IAM specialist mode. Use this for:
 - Analyzing SoD compliance of apps against FOE / BOE catalogs
 - Checking forbidden TRFCT × ACTVT combinations on auth objects `T_DEAL_PD`, `T_DEAL_PF`, `T_DEAL_DP`, `T_DEAL_AG`
 - Planning catalog splits when SoD violations are found
+- Validating hedge request management SoD rules on auth object `T_TOE_HR` (MOE vs Accountant)
 
 **Usage:**
 ```
@@ -90,8 +91,27 @@ Then ask questions like:
 - _"Which apps have TRFCT=D3 and ACTVT=01 in T_DEAL_PD?"_
 - _"Is TM36_TRAN FOE-compatible?"_
 - _"Show me all apps in SAP_TC_FIN_TRM_COMMON that violate BOE rules."_
+- _"Check T_TOE_HR values in SAP_FIN_BC_HEDGE_MGT_PC for MOE SoD violations."_
 
-## Key Tables
+### `/cash-iam`
+
+Activates the Cash Management IAM specialist mode. Use this for:
+
+- Validating bank account create/change/delete/approve authorization setups
+- Checking SoD (four-eyes principle) between submit and approve catalogs
+- Analyzing auth objects `F_CLM_BAM`, `F_CLM_BAI`, `F_CLM_BAIC`, `F_CLM_BAOR`, `F_CLM_BKCR`
+- Reviewing bank account interest condition authorizations
+- Verifying Business Role Template (BRT) and catalog assignments
+
+**Usage:**
+```
+/cash-iam
+```
+Then ask questions like:
+- _"Verify the authorization setup of F1366_TRAN."_
+- _"Does SAP_BR_CASH_MANAGER violate the four-eyes principle?"_
+- _"Check whether F9017_TRAN has the correct ACTVT values for F_CLM_BAIC."_
+- _"Which catalogs are assigned to SAP_BR_CASH_SPECIALIST?"_
 
 | Table | Purpose |
 |-------|---------|
@@ -146,15 +166,116 @@ Then ask questions like:
 | D2 | KU | Give Notice |
 | D2 | VF | Expire contract |
 
+## Hedge Request Management SoD Reference
+
+Governed by auth object **`T_TOE_HR`** (fields: `HREQ_CAT`, `ACTVT`), independent of the `T_DEAL_*` objects.
+
+### HREQ_CAT Values
+
+| Value | Meaning |
+|-------|---------|
+| `A` | Manual Designation |
+| `D` | Dedesignation |
+| `G` | FX Hedge |
+| `O` | Offsetting |
+| `S` | FX Swap |
+
+### Role Split and Relevant Catalogs
+
+| Role | Catalogs | Restriction |
+|------|----------|-------------|
+| **MOE** (front office) | `SAP_FIN_BC_HEDGE_MGT_PC`, `SAP_FIN_BC_TRM_HM_HR_FOE_PC` | Cannot release or reverse designation/dedesignation requests |
+| **Accountant** | `SAP_FIN_BC_TRM_HM_HR_ACCT_PC` | Can only release and reverse dedesignation requests |
+
+### Forbidden Combinations
+
+**MOE catalogs** must NOT contain (on `T_TOE_HR`):
+
+| HREQ_CAT | ACTVT | Meaning |
+|----------|-------|---------|
+| A | 43 | Release manual designation request |
+| A | 85 | Reverse manual designation request |
+| D | 43 | Release dedesignation request |
+| D | 85 | Reverse dedesignation request |
+
+**Accountant catalogs** must NOT contain (on `T_TOE_HR`):
+
+| HREQ_CAT | ACTVT | Meaning |
+|----------|-------|---------|
+| A | 01 | Create manual designation request |
+| A | 02 | Change manual designation request |
+| A | 06 | Delete manual designation request |
+| D | 01 | Create dedesignation request |
+| D | 02 | Change dedesignation request |
+| D | 06 | Delete dedesignation request |
+
+> Categories G, O, S carry no SoD restriction — both roles may hold all activities for those categories.
+
+## Cash Management SoD Reference
+
+### Core Authorization Objects
+
+| Auth Object | Description | Key ACTVT Values |
+|-------------|-------------|-----------------|
+| `F_CLM_BAM` | Bank account master data (create/change/delete/display) | `01`=Create, `02`=Change, `03`=Display, `06`=Delete, `63`=Transport |
+| `F_CLM_BAOR` | Bank account opening request (submit/approve) | `03`=Display, `31`=Approve |
+| `F_CLM_BKCR` | Bank account change request (create/change/approve) | `01`=Create, `02`=Change, `03`=Display |
+| `F_CLM_BAI` | Bank account interest records | `03`=Display, `06`=Delete |
+| `F_CLM_BAIC` | Bank account interest conditions | `01`=Create, `02`=Change, `03`=Display, `06`=Delete, `F4`=Value Help |
+| `F_CLM_BAH2` | Bank account hierarchy | `01`=Create, `02`=Change, `03`=Display, `06`=Delete |
+
+### Key Business Catalogs
+
+| Catalog ID | Title | Role |
+|------------|-------|------|
+| `SAP_FIN_BC_CM_BAM2_PC` | Bank Accounts Management | Create/change/delete/approve accounts |
+| `SAP_FIN_BC_CM_BAM2_BASIC_PC` | Bank Accounts Management Basic | Display bank accounts |
+| `SAP_FIN_BC_CM_BAA_SUBMIT_PC` | Submit Bank Account Applications | Submit workflow |
+| `SAP_FIN_BC_CM_BAA_APPROVE_PC` | Approve Bank Account Applications | Approve workflow |
+| `SAP_FIN_BC_CM_BAI_PC` | Bank Account Interest Management | Interest conditions |
+
+### Business Role Templates
+
+| BRT ID | Display Name | Catalogs |
+|--------|--------------|---------|
+| `SAP_BR_CASH_MANAGER` | Cash Manager | BAM2_PC, BAA_APPROVE_PC, BAI_PC |
+| `SAP_BR_CASH_SPECIALIST` | Cash Management Specialist | BAM2_PC, BAA_SUBMIT_PC, BAA_APPROVE_PC, BAI_PC |
+
+### Four-Eyes Principle (SoD)
+
+Cash Management enforces separation via workflow rather than hard auth-object rules:
+
+- **Submitter** (`SAP_FIN_BC_CM_BAA_SUBMIT_PC`) must NOT be the same role as **Approver** (`SAP_FIN_BC_CM_BAA_APPROVE_PC`)
+- A user creating bank accounts (`F1366_TRAN`, ACTVT 01/02) should not also approve changes (`F6264_TRAN`)
+
+### Activity Matrix per Key App
+
+| App | Description | F_CLM_BAM ACTVT | F_CLM_BAOR ACTVT | F_CLM_BKCR ACTVT |
+|-----|-------------|-----------------|------------------|------------------|
+| `F1366_TRAN` | Manage Bank Accounts | 01, 02, 03, 06 | — | — |
+| `F1366A_TRAN` | Display Bank Accounts | 03 | — | — |
+| `F5861_TRAN` | Submit Applications | — | (submit flow) | — |
+| `F5859_TRAN` | Approve Applications | — | 03, 31 | — |
+| `F5860_TRAN` | Applications Overview | — | 03, 31 | — |
+| `F6264_TRAN` | Approve Changes | 03, 63 | — | 01, 02, 03 |
+| `F9015_TRAN` | Monitor Interest | 03 | — | — |
+| `F9016_TRAN` | Schedule Interest Jobs | 03 | — | — |
+| `F9017_TRAN` | Manage Interest Conditions | 03 | — | — |
+
 ## Project Structure
 
 ```
 IAM_Assistant/
-├── CLAUDE.md          # Claude Code instructions (data dictionary, query setup)
-├── README.md          # This file
-├── .sapcli.env        # ER6 connection settings (not committed)
-└── skills/
-    └── treasury-iam.md  # Treasury IAM skill definition
+├── CLAUDE.md                   # Claude Code instructions (data dictionary, query setup)
+├── README.md                   # This file
+├── .sapcli.env                 # ER6 connection settings (not committed)
+└── .claude/
+    ├── skills/
+    │   ├── treasury-iam.md     # Treasury IAM skill (FOE/BOE SoD, T_DEAL_*, T_TOE_HR)
+    │   └── cash-iam.md         # Cash Management IAM skill (F_CLM_* auth objects)
+    └── commands/
+        ├── treasury-iam.md     # /treasury-iam slash command
+        └── cash-iam.md         # /cash-iam slash command
 ```
 
 ## Notes
