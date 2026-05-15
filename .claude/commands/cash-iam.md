@@ -1,7 +1,3 @@
----
-name: cash-iam
-description: Use this skill when the user asks about Cash Management IAM, bank account create/change/delete/approve authorizations, bank account interest conditions, the F_CLM_BAM / F_CLM_BAI / F_CLM_BAIC / F_CLM_BAOR auth objects, or catalogs SAP_FIN_BC_CM_BAM2_PC / SAP_FIN_BC_CM_BAI_PC / SAP_FIN_BC_CM_BAA_*.
----
 
 ## Suggested Prompts
 
@@ -39,52 +35,17 @@ You are a Cash Management IAM specialist analyzing apps in SAP ABAP system ER6.
 
 ## Environment Setup
 
+Use the MCP tools (`mcp__er6__query_sql`, etc.) for all ER6 queries. ABAP Open SQL — no JOINs, no subqueries. Use the `rows` parameter for row limits; do **not** use `UP TO N ROWS` inline when a `WHERE` clause is present.
+
+Sapcli fallback (only if MCP unavailable):
 ```bash
 source .sapcli.env
 sapcli datapreview osql "SELECT ..." --rows N
 ```
 
-- No JOINs, no subqueries — single SELECT per call
-- ABAP Open SQL: use `--rows N` flag for row limits (not `UP TO N ROWS` inline)
 - `OR` conditions in WHERE clauses require parentheses: use separate queries instead when in doubt
 - Output is `|`-separated with a header row
 
----
-
-## Key Business Catalogs
-
-| Business Catalog ID | Title | Apps |
-|---|---|---|
-| `SAP_FIN_BC_CM_BAM2_PC` | Cash Management - Bank Accounts Management | F1366_TRAN, F5860_TRAN, F6264_TRAN, F2797_TRAN, F1371A_TRAN, F1372_TRAN, F3775_TRAN, F4973_TRAN, F5097_TRAN, F7019_TRAN, F7166_TRAN, F7805_TRAN, F8926_TRAN, F1575_TRAN, F1765_TRAN, WDA0183_TRAN, FCLM_BAM_MIG_ORIGIN_TRAN, F1370A_TRAN |
-| `SAP_FIN_BC_CM_BAM2_BASIC_PC` | Cash Management - Bank Accounts Management Basic | F1366A_TRAN, F5488_TRAN, F1765_TRAN, F6777_TRAN, WDA0184_TRAN, FCLM_BKONT_MIGRATION_TRAN, FCLM_TECH_ACNT_MIG_TRAN, JBDO_OBJNR_TRAN |
-| `SAP_FIN_BC_CM_BAA_SUBMIT_PC` | Cash Management - Submit Bank Account Applications | F5861_TRAN |
-| `SAP_FIN_BC_CM_BAA_APPROVE_PC` | Cash Management - Approve Bank Account Applications | F5859_TRAN |
-| `SAP_FIN_BC_CM_BAI_PC` | Cash Management - Bank Account Interest Management | F9015_TRAN, F9016_TRAN, F9017_TRAN |
-
-## Key Apps — Bank Account Lifecycle
-
-| App ID | T-Code | Description | Catalog | Read-Only |
-|---|---|---|---|---|
-| `F1366_TRAN` | F1366 | Manage Bank Accounts (create/change/delete) | BAM2_PC | No |
-| `F1366A_TRAN` | F1366 | Manage Bank Accounts (display/basic) | BAM2_BASIC_PC | No |
-| `F5860_TRAN` | F5860 | Bank Account Applications (overview) | BAM2_PC | Yes |
-| `F5861_TRAN` | F5861 | Submit Bank Account Applications | BAA_SUBMIT_PC | No |
-| `F5859_TRAN` | F5859 | Approve Bank Account Applications | BAA_APPROVE_PC | No |
-| `F6264_TRAN` | F6264 | Approve Bank Account Changes | BAM2_PC | No |
-| `F2797_TRAN` | F2797 | My Inbox - For Bank Accounts | BAM2_PC | No |
-| `F1371A_TRAN` | — | My Sent Requests - For Bank Accounts | BAM2_PC | — |
-| `F6265_TRAN` | — | Bank Account Change Request Overview | BAM2_PC | — |
-| `F6777_TRAN` | — | Display Bank Account Logs | BAM2_BASIC_PC | — |
-
-## Key Apps — Bank Account Interest
-
-| App ID | T-Code | Description | Catalog |
-|---|---|---|---|
-| `F9017_TRAN` | F9017 | Manage Bank Account Interest Conditions (create/change/delete) | BAI_PC |
-| `F9016_TRAN` | F9016 | Schedule Jobs for Bank Account Interest Calculation | BAI_PC |
-| `F9015_TRAN` | F9015 | Monitor Bank Account Interest (display/read-only) | BAI_PC |
-
----
 
 ## Core Authorization Objects
 
@@ -185,16 +146,6 @@ Restricts access by company code (used as scope check).
 | `ACTVT` | Activity (`F4`=Value Help) |
 | `BUKRS` | Company Code (`*` = all) |
 
----
-
-## Business Role Templates (BRTs)
-
-| BRT ID | Display Name | Relevant Catalogs |
-|---|---|---|
-| `SAP_BR_CASH_MANAGER` | Cash Manager | BAM2_PC, BAA_APPROVE_PC, BAI_PC |
-| `SAP_BR_CASH_SPECIALIST` | Cash Management Specialist | BAM2_PC, BAA_SUBMIT_PC, BAA_APPROVE_PC, BAI_PC |
-
----
 
 ## IAM Validation: Bank Account Create/Change/Delete/Approve
 
@@ -230,71 +181,6 @@ There are no hard IAM-level SoD rules for bank account management comparable to 
 
 These are **catalog-level SoD concerns** — when validating, check if a single BRT or a user's role combination includes both sides.
 
----
-
-## Workflow
-
-### Step 1 — Identify the Scenario
-
-Determine which action is in scope:
-- **Create/Change/Delete bank accounts** → `F1366_TRAN`, auth object `F_CLM_BAM` (ACTVT 01/02/06), catalog `SAP_FIN_BC_CM_BAM2_PC`
-- **Approve bank account changes** → `F6264_TRAN`, auth objects `F_CLM_BAM` (ACTVT 03/63) + `F_CLM_BKCR` (ACTVT 01/02/03), catalog `SAP_FIN_BC_CM_BAM2_PC`
-- **Submit bank account applications** → `F5861_TRAN`, catalog `SAP_FIN_BC_CM_BAA_SUBMIT_PC`
-- **Approve bank account applications** → `F5859_TRAN`, catalog `SAP_FIN_BC_CM_BAA_APPROVE_PC`
-- **Manage interest conditions** → `F9017_TRAN`, auth object `F_CLM_BAIC` (ACTVT 01/02/03/06), catalog `SAP_FIN_BC_CM_BAI_PC`
-- **Monitor/run interest calculation** → `F9015_TRAN` / `F9016_TRAN`, auth objects `F_CLM_BAI` + `F_CLM_BAM`, catalog `SAP_FIN_BC_CM_BAI_PC`
-
-### Step 2 — Read App Auth Object Instances
-
-```sql
-SELECT APP_ID, UUID, AUTH_OBJECT, STATUS, INACTIVE
-FROM APS_IAM_W_APPAUI WHERE APP_ID = '<APP_ID>'
-```
-
-Focus on rows where `INACTIVE` is blank (active).
-
-### Step 3 — Read Auth Values
-
-```sql
-SELECT UUID, PARENT_ID, FIELD, LOW_VALUE, HIGH_VALUE, STATUS
-FROM APS_IAM_W_APPAUV WHERE APP_ID = '<APP_ID>'
-```
-
-Match `PARENT_ID` → UUID of the auth object instance from Step 2.
-
-### Step 4 — Check Business Catalog Assignment
-
-```sql
-SELECT BU_CATALOG_ID, APP_ID FROM APS_IAM_W_BC_APP WHERE APP_ID = '<APP_ID>'
-```
-
-Verify the app is in the correct business catalog as per the catalog table above.
-
-### Step 5 — Check BRT Assignments (optional)
-
-```sql
-SELECT BRT_ID, BU_CATALOG_ID FROM APS_IAM_W_BRTBUC WHERE BU_CATALOG_ID = '<CATALOG_ID>'
-```
-
-Confirm which Business Role Templates include the catalog.
-
-### Step 6 — Validate the Authorization Setup
-
-For each active auth object instance (INACTIVE = blank):
-1. Collect all `(FIELD, LOW_VALUE)` pairs from APPAUV for that instance's UUID.
-2. Confirm ACTVT values match the expected activities for the app's purpose (see Activity Matrix).
-3. Confirm scope fields (`FCLM_BUKRS`, `BUKRS`) are correctly set (usually `*` for cloud).
-4. Flag any unexpected ACTVT values (e.g., ACTVT 01/02/06 on a display-only app is a violation).
-
-**Example violation output:**
-
-```
-App: F5860_TRAN  Expected: read-only (ACTVT 03 or 31)
-AUTH_OBJECT  UUID  FIELD  LOW_VALUE  Issue
-F_CLM_BAOR   ...   ACTVT  01         Unexpected Create activity on read-only app
-```
-
----
 
 ## Reference: Auth Object Summary per Key App
 
@@ -349,16 +235,3 @@ F_CLM_BAOR   ...   ACTVT  01         Unexpected Create activity on read-only app
 | `F_BUKRS_MD` | S (active) | F4 | BUKRS=* |
 | `F_CLM_BAOR` | S (active) | 03, 31 | BUKRS=* |
 
----
-
-## Quick Reference: ACTVT Values
-
-| ACTVT | Meaning |
-|---|---|
-| 01 | Create |
-| 02 | Change |
-| 03 | Display |
-| 06 | Delete |
-| 31 | Approve / Display for Approval |
-| 63 | Transport (used in change request context) |
-| F4 | Value help (F4 search) |

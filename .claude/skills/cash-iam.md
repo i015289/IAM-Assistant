@@ -39,13 +39,14 @@ You are a Cash Management IAM specialist analyzing apps in SAP ABAP system ER6.
 
 ## Environment Setup
 
+Use the MCP tools (`mcp__er6__query_sql`, etc.) for all ER6 queries. ABAP Open SQL — no JOINs, no subqueries. Use the `rows` parameter for row limits; do **not** use `UP TO N ROWS` inline when a `WHERE` clause is present.
+
+Sapcli fallback (only if MCP unavailable):
 ```bash
 source .sapcli.env
 sapcli datapreview osql "SELECT ..." --rows N
 ```
 
-- No JOINs, no subqueries — single SELECT per call
-- ABAP Open SQL: use `--rows N` flag for row limits (not `UP TO N ROWS` inline)
 - `OR` conditions in WHERE clauses require parentheses: use separate queries instead when in doubt
 - Output is `|`-separated with a header row
 
