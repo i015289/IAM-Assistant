@@ -49,37 +49,76 @@ CLAUDE.md, skill files, and README are updated as new facts surface — undocume
 
 ## Setup
 
-1. **Clone / open the project** in Claude Code:
-   ```bash
-   claude /Users/I015289/Joule_Workspace/IAM_Assistant
-   ```
+### 1. Install sapcli
 
-2. **Install the MCP ER6 server dependencies** inside the `sapcli-env` conda environment:
-   ```bash
-   conda run -n sapcli-env pip install -r mcp-server/requirements.txt
-   ```
-   The server script is `mcp-server/er6_mcp_server.py` and is already wired up in `.mcp.json`:
-   ```json
-   {
-     "mcpServers": {
-       "er6": {
-         "command": "conda",
-         "args": ["run", "--no-capture-output", "-n", "sapcli-env",
-                  "python", "<absolute-path-to-repo>/mcp-server/er6_mcp_server.py"]
-       }
-     }
-   }
-   ```
-   **The path in `.mcp.json` is hardcoded to an absolute path — update it to match your local checkout location before starting Claude Code.**
+sapcli is the SAP CLI tool that provides the underlying connectivity to ER6. It runs inside a dedicated conda environment.
 
-3. **Verify MCP connectivity** — Claude Code will use the `er6` MCP tools automatically when the server is configured in `.mcp.json`.
+```bash
+# Create a dedicated conda environment with Python 3.12
+conda create -n sapcli-env python=3.12 -y
 
-4. **Fallback only — ensure `.sapcli.env` exists** if you need the `sapcli` CLI path (not committed to source control).
+# Activate the environment
+conda activate sapcli-env
 
-5. **Test fallback connectivity**:
-   ```bash
-   source .sapcli.env && conda run -n sapcli-env sapcli datapreview osql "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"
-   ```
+# Install sapcli from GitHub
+pip install git+https://github.com/jfilak/sapcli.git
+
+# Verify installation
+sapcli --version
+```
+
+> **Source:** [https://github.com/jfilak/sapcli](https://github.com/jfilak/sapcli)
+
+### 2. Configure ER6 connection
+
+Create a `.sapcli.env` file in the project root (not committed to source control):
+
+```bash
+export SAP_HOST=<er6-hostname>
+export SAP_PORT=<port>
+export SAP_CLIENT=<client>
+export SAP_USER=ANZEIGER
+export SAP_PASSWORD=display
+export SAP_SSL=true
+```
+
+Test connectivity:
+
+```bash
+source .sapcli.env && conda run -n sapcli-env sapcli datapreview osql "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"
+```
+
+### 3. Clone / open the project in Claude Code
+
+```bash
+claude /Users/I015289/Joule_Workspace/IAM_Assistant
+```
+
+### 4. Install the MCP ER6 server
+
+```bash
+conda run -n sapcli-env pip install -r mcp-server/requirements.txt
+```
+
+The server script is `mcp-server/er6_mcp_server.py` and is already wired up in `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "er6": {
+      "command": "conda",
+      "args": ["run", "--no-capture-output", "-n", "sapcli-env",
+               "python", "<absolute-path-to-repo>/mcp-server/er6_mcp_server.py"]
+    }
+  }
+}
+```
+
+**The path in `.mcp.json` is hardcoded to an absolute path — update it to match your local checkout location before starting Claude Code.**
+
+### 5. Verify MCP connectivity
+
+Claude Code will use the `er6` MCP tools automatically when the server is configured in `.mcp.json`. Start Claude Code and run a test query to confirm.
 
 ## Running Queries
 
