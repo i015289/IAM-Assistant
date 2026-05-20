@@ -4,6 +4,8 @@
     "allow": [
       "Read(*)",
       "Bash(git pull)",
+      "Bash(python3 *)",
+      "Bash(ls *)",
       "mcp__er6__query_sql",
       "mcp__er6__read_table_def",
       "mcp__er6__read_cds_view",
