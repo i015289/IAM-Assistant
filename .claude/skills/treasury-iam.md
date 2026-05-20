@@ -40,7 +40,7 @@ Use the MCP tools (`mcp__er6__query_sql`, etc.) for all ER6 queries. ABAP Open S
 | Is this app FOE or BOE? | Steps 3–4 → TRFCT patterns table |
 | Does this catalog need splitting? | Step 5 |
 | Validate an app's SoD compliance | Step 6 |
-| Hedge request SoD (T_TOE_HR) | Hedge section |
+| Hedge request SoD (T_TOE_HR) | Hedge section — **MOE / Accountant only**; not applicable to FOE/BOE |
 
 ---
 
@@ -263,6 +263,8 @@ T_DEAL_PD    42010AEEC8811FD0B8F6FEFC193980A7  D3     01     FOE: D3+01 forbidde
 ## Hedge Request Management SoD
 
 Governed by auth object **`T_TOE_HR`** — independent of `T_DEAL_*`.
+
+**Scope:** T_TOE_HR SoD applies **only to MOE and Treasury Accountant** roles. Do **not** evaluate T_TOE_HR against FOE or BOE forbidden matrices — FOE and BOE are not in scope for hedge request segregation.
 
 Fields: **HREQ_CAT** (hedge request category), **ACTVT** (activity).
 

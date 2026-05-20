@@ -13,4 +13,4 @@ This index lists all saved memos. Claude loads this file at session start to che
 
 <!-- Memos are listed below. Each entry: [title](filename.md) — one-line summary | date -->
 
-*(No memos saved yet.)*
+- [Treasury SoD Compliance Scan](treasury-sod-scan.md) — full FOE/BOE T_DEAL_PD + MOE/Accountant T_TOE_HR scan, 6 violations across 5 apps | 2026-05-20
