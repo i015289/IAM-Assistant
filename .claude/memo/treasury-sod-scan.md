@@ -1,8 +1,8 @@
 # Treasury SoD Compliance Scan
 
-**Date:** 2026-05-20
+**Date:** 2026-05-20 (re-run: 2026-05-20)
 **Domain:** Treasury
-**Status:** Complete
+**Status:** Complete — Re-run confirms no change
 
 ## Findings
 
@@ -34,6 +34,11 @@ Applied corrected scope: T_DEAL_PD against FOE+BOE; T_TOE_HR against MOE/Account
   - T_TOE_HR is evaluated only for MOE and Accountant; FOE/BOE are out of scope.
 - Updated `.claude/skills/treasury-iam.md` Quick Start table and Hedge Request Management section to reflect MOE/Accountant-only scope.
 
+## Re-run Summary (2026-05-20)
+
+Re-scan executed against live ER6 data. All 270 T_DEAL_PD app UUIDs and 16 T_TOE_HR app UUIDs re-checked.
+**Result: 0 new violations, 0 remediated — all 6 UUID-level violations from original scan persist unchanged.**
+
 ## Work in Progress
 
 *(none — scan complete)*
@@ -54,7 +59,7 @@ Applied corrected scope: T_DEAL_PD against FOE+BOE; T_TOE_HR against MOE/Account
 
 ## Artifacts
 
-- `/tmp/sod_final_report.json` — full violation report (note: `T_TOE_HR rules apply only to MOE and Accountant; FOE/BOE out of scope`)
+- `/tmp/sod_rerun_report.json` — re-run violation report (2026-05-20), confirms 0 delta vs prior scan
 - `/tmp/sod_tdeal_violations.json` — T_DEAL_PD violations
 - `/tmp/sod_thr_moe_acc_violations.json` — T_TOE_HR MOE/Accountant violations
 - `/tmp/actvt_master.tsv` — 3,875-row ACTVT master, 100% coverage of 270 T_DEAL_PD apps
