@@ -1,7 +1,3 @@
----
-name: cash-iam
-description: Use this skill when the user asks about Cash Management IAM, bank account create/change/delete/approve authorizations, bank account interest conditions, the F_CLM_BAM / F_CLM_BAI / F_CLM_BAIC / F_CLM_BAOR auth objects, or catalogs SAP_FIN_BC_CM_BAM2_PC / SAP_FIN_BC_CM_BAI_PC / SAP_FIN_BC_CM_BAA_*.
----
 
 ## Suggested Prompts
 
@@ -139,6 +135,9 @@ Compare `SAP_BR_CASH_MANAGER` vs. `SAP_BR_CASH_SPECIALIST` catalog-by-catalog to
 
 ## Environment Setup
 
+Use the MCP tools (`mcp__er6__query_sql`, etc.) for all ER6 queries. ABAP Open SQL — no JOINs, no subqueries. Use the `rows` parameter for row limits; do **not** use `UP TO N ROWS` inline when a `WHERE` clause is present.
+
+Sapcli fallback (only if MCP unavailable):
 ```bash
 source .sapcli.env
 sapcli datapreview osql "SELECT ..." --rows N
@@ -592,71 +591,6 @@ There are no IAM-level SoD rules for bank account management. All 4-eyes / 2-per
 
 No catalog-level SoD separation is required for these workflows.
 
----
-
-## Workflow
-
-### Step 1 — Identify the Scenario
-
-Determine which action is in scope:
-- **Create/Change/Delete bank accounts** → `F1366_TRAN`, auth object `F_CLM_BAM` (ACTVT 01/02/06), catalog `SAP_FIN_BC_CM_BAM2_PC`
-- **Approve bank account changes** → `F6264_TRAN`, auth objects `F_CLM_BAM` (ACTVT 03/63) + `F_CLM_BKCR` (ACTVT 01/02/03), catalog `SAP_FIN_BC_CM_BAM2_PC`
-- **Submit bank account applications** → `F5861_TRAN`, catalog `SAP_FIN_BC_CM_BAA_SUBMIT_PC`
-- **Approve bank account applications** → `F5859_TRAN`, catalog `SAP_FIN_BC_CM_BAA_APPROVE_PC`
-- **Manage interest conditions** → `F9017_TRAN`, auth object `F_CLM_BAIC` (ACTVT 01/02/03/06), catalog `SAP_FIN_BC_CM_BAI_PC`
-- **Monitor/run interest calculation** → `F9015_TRAN` / `F9016_TRAN`, auth objects `F_CLM_BAI` + `F_CLM_BAM`, catalog `SAP_FIN_BC_CM_BAI_PC`
-
-### Step 2 — Read App Auth Object Instances
-
-```sql
-SELECT APP_ID, UUID, AUTH_OBJECT, STATUS, INACTIVE
-FROM APS_IAM_W_APPAUI WHERE APP_ID = '<APP_ID>'
-```
-
-Focus on rows where `INACTIVE` is blank (active).
-
-### Step 3 — Read Auth Values
-
-```sql
-SELECT UUID, PARENT_ID, FIELD, LOW_VALUE, HIGH_VALUE, STATUS
-FROM APS_IAM_W_APPAUV WHERE APP_ID = '<APP_ID>'
-```
-
-Match `PARENT_ID` → UUID of the auth object instance from Step 2.
-
-### Step 4 — Check Business Catalog Assignment
-
-```sql
-SELECT BU_CATALOG_ID, APP_ID FROM APS_IAM_W_BC_APP WHERE APP_ID = '<APP_ID>'
-```
-
-Verify the app is in the correct business catalog as per the catalog table above.
-
-### Step 5 — Check BRT Assignments (optional)
-
-```sql
-SELECT BRT_ID, BU_CATALOG_ID FROM APS_IAM_W_BRTBUC WHERE BU_CATALOG_ID = '<CATALOG_ID>'
-```
-
-Confirm which Business Role Templates include the catalog.
-
-### Step 6 — Validate the Authorization Setup
-
-For each active auth object instance (INACTIVE = blank):
-1. Collect all `(FIELD, LOW_VALUE)` pairs from APPAUV for that instance's UUID.
-2. Confirm ACTVT values match the expected activities for the app's purpose (see Activity Matrix).
-3. Confirm scope fields (`FCLM_BUKRS`, `BUKRS`) are correctly set (usually `*` for cloud).
-4. Flag any unexpected ACTVT values (e.g., ACTVT 01/02/06 on a display-only app is a violation).
-
-**Example violation output:**
-
-```
-App: F5860_TRAN  Expected: read-only (ACTVT 03 or 31)
-AUTH_OBJECT  UUID  FIELD  LOW_VALUE  Issue
-F_CLM_BAOR   ...   ACTVT  01         Unexpected Create activity on read-only app
-```
-
----
 
 ## Reference: Auth Object Summary per Key App
 

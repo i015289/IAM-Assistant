@@ -6,6 +6,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 IAM (Identity & Access Management) analysis assistant that queries the SAP ABAP system **ER6** to analyze authorizations, roles, packages, transactions, and related IAM data.
 
+## Memo System
+
+At the start of every session, read `.claude/memo/INDEX.md`. If any memos have `Status: In Progress`, surface them to the user:
+
+> Found in-progress memo: **[title]** — last updated YYYY-MM-DD. Load it to resume?
+
+Use `/memo` (see `.claude/skills/memo.md`) to save, load, update, and manage persistent memos across sessions. Memos store: IAM findings, decisions with rationale, work in progress, and known-good baselines.
+
 ## Running Queries Against ER6
 
 **Always prefer the `er6` MCP tools over Bash/sapcli for ER6 queries.** The MCP server is the default and recommended way to access ER6.
@@ -35,7 +43,9 @@ IAM (Identity & Access Management) analysis assistant that queries the SAP ABAP 
 
 ### Key Notes
 
-- SQL dialect is **ABAP Open SQL** — use `UP TO N ROWS` for row limits (not `TOP` or `FETCH FIRST`)
+- SQL dialect is **ABAP Open SQL** — use the `rows` parameter on `mcp__er6__query_sql` for row limits (not `TOP` or `FETCH FIRST`)
+- **Do NOT use `UP TO N ROWS` inline when a `WHERE` clause is present** — the ER6 backend rejects this combination. Always pass `rows` as a separate parameter instead.
+- `UP TO N ROWS` without a `WHERE` clause is accepted inline (e.g. `SELECT ... FROM TABLE UP TO 10 ROWS`) but using the `rows` parameter is always safe and preferred.
 - Output from sapcli is `|`-separated, similar to CSV with a header row
 - Authentication: username/password (`ANZEIGER`/`display`), read-only access, SSL enabled
 
@@ -67,8 +77,8 @@ Maps T-Codes to visual/functional variants.
 ### T001 — Company Codes
 
 ### SUI_TM_MM_APP — Fiori Launchpad App-to-Catalog Assignment
-Maps apps to their technical catalog(s).
-- `APP_ID`: App identifier (FK to APS_IAM_W_APP)
+Maps apps to their technical catalog(s). **Note:** For Treasury apps (FTR*, TM*, TS* prefixes), APP_ID values in this table are stored as GUIDs, not SIA6 names — use `APS_IAM_W_BC_APP` or `APS_IAM_W_BUCAPP` instead for business catalog lookups by app name.
+- `APP_ID`: App identifier (GUID format for Treasury apps; SIA6 name for others)
 - `CAT_ID`: Catalog identifier (FK to SUI_TM_MM_CAT)
 
 ### SUI_TM_MM_CAT — Launchpad Technical Catalog
@@ -98,6 +108,11 @@ Master table of IAM-managed apps (SIA6 objects).
 - `TCODE`: Linked SAP transaction code
 - `READ_ONLY`: Whether the app is read-only
 - `SCOPE_DEPENDENT`: Whether app is scope-dependent
+- `EXCLUDE_START_AUTH`: Whether start authorization check is excluded
+- `FORBID_USE_WITH_SUCCESSOR`: Whether app is forbidden when a successor exists
+- `NO_DIRECT_ASSIGNMENT`: Whether app cannot be directly assigned to users
+- `RTYPE_MIG_STATUS`: Restriction type migration status
+- `REL_FOR_CUST_CAT_EXT`: Whether app is released for customer catalog extensions
 - `CREATE_USER` / `CHANGE_USER`: Responsible users
 - `CREATE_TIMESTAMP` / `CHANGE_TIMESTAMP`: Audit timestamps
 
@@ -427,6 +442,7 @@ Maps apps to their Fiori descriptor/UI5 variant IDs, controlling app groupabilit
 
 ### APS_IAM_W_BUC — Business Catalogs (master)
 Master table for Business Catalogs — the primary grouping unit for Fiori apps in IAM.
+**⚠ Not directly queryable via `mcp__er6__query_sql`** — use `APS_IAM_W_BRTBUC` to list catalogs by BRT, or `APS_IAM_W_BC_APP` to look up the catalog for a specific app.
 - `BU_CATALOG_ID`: Business Catalog identifier (PK, e.g. `SAP_FIN_BC_GL_REPORTING_MY_PC`)
 - `BU_CATALOG_TYPE`: Catalog type (`A`=standard)
 - `SCOPE_DEPENDENT`: Whether the catalog is scope-dependent (X = yes)
@@ -437,3 +453,24 @@ Master table for Business Catalogs — the primary grouping unit for Fiori apps 
 - `DERIVABLE` / `RESTRICTABLE` / `READ_ONLY`: Catalog-level flags
 - `CREATE_USER` / `CHANGE_USER`: Audit users
 - `CREATE_TIMESTAMP` / `CHANGE_TIMESTAMP`: Audit timestamps
+
+## Business Role Templates Quick Reference
+
+### Treasury BRTs
+
+| BRT ID | Display Name | Office |
+|--------|--------------|--------|
+| `SAP_BR_TREASURY_SPECIALIST_FOE` | Treasury Specialist - Front Office | FOE |
+| `SAP_BR_TREASURY_SPECIALIST_BOE` | Treasury Specialist - Back Office | BOE |
+| `SAP_BR_TREASURY_SPECIALIST_MOE` | Treasury Specialist - Middle Office | MOE |
+| `SAP_BR_TREASURY_ACCOUNTANT` | Treasury Accountant | BOE |
+| `SAP_BR_TREASURY_RISK_MANAGER` | Treasury Risk Manager | Mixed |
+
+Country variants (`_CN`, `_SG`, `_TH`, `_BR`) follow the same catalog pattern as their base BRT.
+
+### Cash Management BRTs
+
+| BRT ID | Display Name | Catalogs |
+|--------|--------------|---------|
+| `SAP_BR_CASH_MANAGER` | Cash Manager | BAM2_PC, BAA_APPROVE_PC, BAI_PC |
+| `SAP_BR_CASH_SPECIALIST` | Cash Management Specialist | BAM2_PC, BAA_SUBMIT_PC, BAA_APPROVE_PC, BAI_PC |

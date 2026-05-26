@@ -1,10 +1,11 @@
 {
+  "model": "opus[1m]",
   "permissions": {
     "allow": [
       "Read(*)",
-      "mcp__gtnc__gtnc_check_data_element",
-      "mcp__gtnc__gtnc_get_field_details",
       "Bash(git pull)",
+      "Bash(python3 *)",
+      "Bash(ls *)",
       "mcp__er6__query_sql",
       "mcp__er6__read_table_def",
       "mcp__er6__read_cds_view",
@@ -13,5 +14,41 @@
       "mcp__er6__list_package"
     ]
   },
-  "enableAllProjectMcpServers": true
+  "enableAllProjectMcpServers": true,
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/I015289/Joule_Workspace/iam-assistant/.claude/hooks/validate-memo.sh",
+            "statusMessage": "Validating memo structure..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/I015289/Joule_Workspace/iam-assistant/.claude/hooks/sync-skills.sh",
+            "statusMessage": "Syncing skill to skills/ and commands/..."
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__er6__query_sql",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/I015289/Joule_Workspace/iam-assistant/.claude/hooks/log-query.sh",
+            "async": true
+          }
+        ]
+      }
+    ]
+  }
 }

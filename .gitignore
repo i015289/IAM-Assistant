@@ -1,5 +1,6 @@
 # SAP connection credentials — never commit these
 .sapcli.env
+.sapwiki.env
 
 # Claude — exclude only non-shareable session data
 .claude/worktrees/
