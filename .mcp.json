@@ -8,7 +8,7 @@
         "-n",
         "sapcli-env",
         "python",
-        "/Users/I015289/Joule_Workspace/iam-assistant/mcp-server/er6_mcp_server.py"
+        "mcp-server/er6_mcp_server.py"
       ]
     }
   }
