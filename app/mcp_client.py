@@ -27,6 +27,7 @@ class MCPClient:
             "clientInfo": {"name": "iam-assistant-ui", "version": "0.1.0"},
         }})
         await self._recv()  # initialize response
+        await self._notify("notifications/initialized")
 
         await self._send({"method": "tools/list", "params": {}})
         list_response = await self._recv()
@@ -57,8 +58,17 @@ class MCPClient:
         await self._proc.stdin.drain()
         return message
 
+    async def _notify(self, method: str) -> None:
+        """Send a JSON-RPC notification (no id, no response expected)."""
+        message = {"jsonrpc": "2.0", "method": method}
+        line = json.dumps(message) + "\n"
+        self._proc.stdin.write(line.encode())
+        await self._proc.stdin.drain()
+
     async def _recv(self) -> dict:
-        line = await self._proc.stdout.readline()
+        line = await asyncio.wait_for(self._proc.stdout.readline(), timeout=60.0)
+        if not line:
+            raise RuntimeError("MCP subprocess closed stdout unexpectedly")
         return json.loads(line.decode().strip())
 
     async def stop(self) -> None:
