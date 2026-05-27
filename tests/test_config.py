@@ -1,5 +1,7 @@
-import os
+import importlib
+import sys
 import pytest
+from pydantic import ValidationError
 
 
 def test_config_loads_all_required_vars(monkeypatch):
@@ -10,12 +12,11 @@ def test_config_loads_all_required_vars(monkeypatch):
     monkeypatch.setenv("SESSION_SECRET", "supersecret")
     monkeypatch.setenv("BASE_URL", "http://localhost:8080")
 
-    # Force reload so monkeypatched env is picked up
-    import importlib
+    sys.modules.pop("app.config", None)
     import app.config as cfg
     importlib.reload(cfg)
 
-    assert cfg.settings.anthropic_api_key == "sk-test"
+    assert cfg.settings.anthropic_api_key.get_secret_value() == "sk-test"
     assert cfg.settings.oidc_client_id == "client-id"
     assert cfg.settings.base_url == "http://localhost:8080"
 
@@ -25,7 +26,7 @@ def test_config_raises_on_missing_required_var(monkeypatch):
                 "OIDC_DISCOVERY_URL", "SESSION_SECRET", "BASE_URL"]:
         monkeypatch.delenv(var, raising=False)
 
-    import importlib
-    import app.config as cfg
-    with pytest.raises(Exception):
+    sys.modules.pop("app.config", None)
+    with pytest.raises(ValidationError):
+        import app.config as cfg
         importlib.reload(cfg)
