@@ -5,22 +5,22 @@ from typing import AsyncIterator
 import anthropic
 
 from app.config import settings
+from app.mcp_client import MCPClient
 
 _SYSTEM_PROMPT = (Path(__file__).parent.parent / "CLAUDE.md").read_text()
+_CLIENT = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.get_secret_value())
 
 
 async def stream_chat(
     messages: list[dict],
-    mcp,
+    mcp: MCPClient,
 ) -> AsyncIterator[str]:
     """Yield SSE-formatted lines from a streaming Anthropic response.
 
     Handles tool_use blocks by calling mcp.call_tool() and continuing the
-    conversation. Yields text chunks as ``data: <chunk>\\n\\n`` and terminates
-    with ``data: [DONE]\\n\\n`` or ``data: [ERROR] <msg>\\n\\n``.
+    conversation. Yields text chunks as `data: <chunk>\n\n` and terminates
+    with `data: [DONE]\n\n` or `data: [ERROR] <msg>\n\n`.
     """
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.get_secret_value())
-
     tools = [
         {
             "name": t["name"],
@@ -36,22 +36,14 @@ async def stream_chat(
         while True:
             tool_uses = []
 
-            async with client.messages.stream(
+            async with _CLIENT.messages.stream(
                 model="claude-opus-4-7",
                 max_tokens=8096,
                 system=_SYSTEM_PROMPT,
                 messages=conversation,
                 tools=tools if tools else anthropic.NOT_GIVEN,
             ) as stream:
-                event_iter = stream.__aiter__()
-                while True:
-                    try:
-                        if hasattr(event_iter, "__anext__"):
-                            event = await event_iter.__anext__()
-                        else:
-                            event = next(event_iter)
-                    except (StopAsyncIteration, StopIteration):
-                        break
+                async for event in stream:
                     if event.type == "content_block_delta":
                         if event.delta.type == "text_delta":
                             yield f"data: {json.dumps(event.delta.text)}\n\n"
@@ -62,7 +54,6 @@ async def stream_chat(
             if not tool_uses:
                 break
 
-            # Append assistant message with tool_use blocks
             conversation.append({
                 "role": "assistant",
                 "content": [
@@ -71,7 +62,6 @@ async def stream_chat(
                 ],
             })
 
-            # Execute each tool and collect results
             tool_results = []
             for tool_use in tool_uses:
                 result = await mcp.call_tool(tool_use.name, tool_use.input)
