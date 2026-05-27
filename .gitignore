@@ -7,3 +7,9 @@
 
 # macOS
 .DS_Store
+
+# Environment — never commit secrets
+.env
+
+# Superpowers
+.superpowers/
