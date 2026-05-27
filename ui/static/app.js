@@ -78,8 +78,10 @@ function openResultsTab(label) {
   if (tabs.length > MAX_TABS) {
     const oldest = tabs[1]; // tabs[0] is welcome tab
     const oldestNum = oldest.dataset.tab;
+    const wasActive = oldest.classList.contains('active');
     oldest.remove();
     document.getElementById(`pane-${oldestNum}`)?.remove();
+    if (wasActive) activateTab('welcome');
   }
 
   return pane;
@@ -113,7 +115,7 @@ function enableSortableTable(table) {
 }
 
 function renderMarkdown(pane, raw) {
-  pane.innerHTML = marked.parse(raw);
+  pane.innerHTML = DOMPurify.sanitize(marked.parse(raw));
   pane.querySelectorAll('table').forEach(enableSortableTable);
 }
 
@@ -159,14 +161,15 @@ async function sendMessage() {
     const reader = response.body.getReader();
     const decoder = new TextDecoder();
     let partial = '';
+    let streamDone = false;
 
-    while (true) {
+    while (!streamDone) {
       const { done, value } = await reader.read();
       if (done) break;
 
       partial += decoder.decode(value, { stream: true });
       const lines = partial.split('\n');
-      partial = lines.pop(); // keep incomplete line
+      partial = lines.pop() ?? ''; // keep incomplete line
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
@@ -175,11 +178,11 @@ async function sendMessage() {
         if (payload === '[DONE]') {
           // Finalize
           aiEl.querySelector('.cursor')?.remove();
-          const fullText = aiEl.textContent;
-          history.push({ role: 'assistant', content: fullText });
+          history.push({ role: 'assistant', content: buffer });
           saveHistory(history);
 
           if (resultPane) renderMarkdown(resultPane, buffer);
+          streamDone = true;
           break;
         }
 
@@ -189,6 +192,7 @@ async function sendMessage() {
           errEl.className = 'msg-error';
           errEl.textContent = payload.replace('[ERROR] ', '');
           aiEl.appendChild(errEl);
+          streamDone = true;
           break;
         }
 
