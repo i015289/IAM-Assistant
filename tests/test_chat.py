@@ -1,4 +1,3 @@
-import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -43,7 +42,7 @@ async def test_stream_yields_text_chunks():
 
 @pytest.mark.asyncio
 async def test_stream_executes_tool_use():
-    """stream_chat calls mcp.call_tool when a tool_use block is received."""
+    """stream_chat accumulates input_json_delta and calls mcp.call_tool with correct args."""
     from app.chat import stream_chat
 
     mock_mcp = MagicMock()
@@ -54,16 +53,20 @@ async def test_stream_executes_tool_use():
     tool_use_block.type = "tool_use"
     tool_use_block.id = "tu_123"
     tool_use_block.name = "query_sql"
-    tool_use_block.input = {"sql": "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"}
+    tool_use_block.input = {}  # starts empty — gets populated from input_json_delta
 
     fake_events_1 = [
-        MagicMock(type="content_block_start", content_block=tool_use_block),
-        MagicMock(type="content_block_stop"),
+        MagicMock(type="content_block_start", content_block=tool_use_block, index=0),
+        MagicMock(type="content_block_delta", index=0,
+                  delta=MagicMock(type="input_json_delta", partial_json='{"sql": "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"}')),
+        MagicMock(type="content_block_stop", index=0),
         MagicMock(type="message_stop"),
     ]
 
     fake_events_2 = [
-        MagicMock(type="content_block_delta", delta=MagicMock(type="text_delta", text="Found 1 package.")),
+        MagicMock(type="content_block_delta", index=0,
+                  delta=MagicMock(type="text_delta", text="Found 1 package.")),
+        MagicMock(type="content_block_stop", index=0),
         MagicMock(type="message_stop"),
     ]
 
@@ -90,6 +93,7 @@ async def test_stream_executes_tool_use():
         "query_sql", {"sql": "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"}
     )
     assert any("Found 1 package." in c for c in chunks)
+    assert chunks[-1] == "data: [DONE]\n\n"
 
 
 @pytest.mark.asyncio

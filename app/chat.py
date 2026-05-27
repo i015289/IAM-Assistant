@@ -36,6 +36,8 @@ async def stream_chat(
         while True:
             tool_uses = []
 
+            input_buffers: dict[int, dict] = {}
+
             async with _CLIENT.messages.stream(
                 model="claude-opus-4-7",
                 max_tokens=8096,
@@ -44,12 +46,24 @@ async def stream_chat(
                 tools=tools if tools else anthropic.NOT_GIVEN,
             ) as stream:
                 async for event in stream:
-                    if event.type == "content_block_delta":
-                        if event.delta.type == "text_delta":
-                            yield f"data: {json.dumps(event.delta.text)}\n\n"
-                    elif event.type == "content_block_start":
-                        if event.content_block.type == "tool_use":
-                            tool_uses.append(event.content_block)
+                    if event.type == "content_block_start":
+                        if hasattr(event, "content_block") and event.content_block.type == "tool_use":
+                            input_buffers[event.index] = {"block": event.content_block, "buf": ""}
+                    elif event.type == "content_block_delta":
+                        if hasattr(event.delta, "type"):
+                            if event.delta.type == "text_delta":
+                                yield f"data: {json.dumps(event.delta.text)}\n\n"
+                            elif event.delta.type == "input_json_delta":
+                                if event.index in input_buffers:
+                                    input_buffers[event.index]["buf"] += event.delta.partial_json
+                    elif event.type == "content_block_stop":
+                        if event.index in input_buffers:
+                            entry = input_buffers.pop(event.index)
+                            try:
+                                entry["block"].input = json.loads(entry["buf"] or "{}")
+                            except json.JSONDecodeError:
+                                entry["block"].input = {}
+                            tool_uses.append(entry["block"])
 
             if not tool_uses:
                 break
