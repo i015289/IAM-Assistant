@@ -14,7 +14,8 @@ from app.chat import stream_chat
 from app.config import settings
 from app.mcp_client import MCPClient
 
-_MCP_SCRIPT = str(Path(__file__).parent.parent / "mcp-server" / "er6_mcp_server.py")
+_ROOT = Path(__file__).parent.parent
+_MCP_SCRIPT = str(_ROOT / "mcp-server" / "er6_mcp_server.py")
 _mcp: MCPClient | None = None
 
 
@@ -34,8 +35,8 @@ app.add_middleware(
     https_only=settings.base_url.startswith("https"),
 )
 app.include_router(auth_router)
-app.mount("/static", StaticFiles(directory="ui/static"), name="static")
-templates = Jinja2Templates(directory="ui/templates")
+app.mount("/static", StaticFiles(directory=_ROOT / "ui" / "static"), name="static")
+templates = Jinja2Templates(directory=_ROOT / "ui" / "templates")
 
 
 @app.get("/health")
@@ -67,7 +68,7 @@ async def chat(
     user: dict = Depends(get_current_user),
 ):
     origin = request.headers.get("origin", "")
-    if origin and not origin.startswith(settings.base_url):
+    if origin and origin != settings.base_url:
         return JSONResponse({"error": "forbidden"}, status_code=403)
 
     return StreamingResponse(
