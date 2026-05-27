@@ -1,6 +1,6 @@
 ---
 name: goal
-description: Use this skill when the user states a high-level IAM analysis objective they want to accomplish. Captures the goal, decomposes it into concrete steps, then hands off to the hermes agent loop to execute autonomously.
+description: Use this skill when the user states a high-level IAM analysis objective they want to accomplish. Captures the goal, decomposes it into concrete steps, then hands off to the execute agent loop to execute autonomously.
 ---
 
 # Goal Skill
@@ -38,10 +38,10 @@ Plan:
 N. [Final step] → expected output: <final deliverable>
 ```
 
-## Step 4 — Hand off to hermes
+## Step 4 — Hand off to execute
 
 After presenting the plan, say:
 
-> Plan ready. Type `/hermes` to execute autonomously, or tell me which step to start with.
+> Plan ready. Type `/execute` to execute autonomously, or tell me which step to start with.
 
-If the user types `/hermes` or says "go", activate the hermes skill with the full plan as context.
+If the user types `/execute` or says "go", activate the execute skill with the full plan as context.

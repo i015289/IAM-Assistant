@@ -8,7 +8,7 @@
         "-n",
         "sapcli-env",
         "python",
-        "mcp-server/er6_mcp_server.py"
+        "./mcp-server/er6_mcp_server.py"
       ]
     }
   }

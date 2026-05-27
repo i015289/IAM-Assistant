@@ -34,10 +34,10 @@ Plan:
 N. [Final step] → expected output: <final deliverable>
 ```
 
-## Step 4 — Hand off to hermes
+## Step 4 — Hand off to execute
 
 After presenting the plan, say:
 
-> Plan ready. Type `/hermes` to execute autonomously, or tell me which step to start with.
+> Plan ready. Type `/execute` to execute autonomously, or tell me which step to start with.
 
-If the user types `/hermes` or says "go", activate the hermes skill with the full plan as context.
+If the user types `/execute` or says "go", activate the execute skill with the full plan as context.

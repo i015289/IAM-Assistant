@@ -105,7 +105,7 @@ At the start of every session, Claude reads `.claude/memo/INDEX.md`. If any memo
 |------|----------------|
 | **Findings** | SoD violations, app FOE/BOE classification, forbidden combinations found |
 | **Decisions** | Catalog split proposals, app-to-catalog assignments with rationale |
-| **Work in Progress** | Partially executed `/hermes` plans, open questions, next steps |
+| **Work in Progress** | Partially executed `/execute` plans, open questions, next steps |
 | **Known Good Baselines** | Apps/configs confirmed correct — useful for future regression checks |
 
 ---
