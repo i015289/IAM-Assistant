@@ -8,7 +8,10 @@ from app.config import settings
 from app.mcp_client import MCPClient
 
 _SYSTEM_PROMPT = (Path(__file__).parent.parent / "CLAUDE.md").read_text()
-_CLIENT = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key.get_secret_value())
+_CLIENT = anthropic.AsyncAnthropic(
+    api_key=settings.anthropic_api_key.get_secret_value(),
+    base_url=settings.anthropic_base_url,
+)
 
 
 async def stream_chat(

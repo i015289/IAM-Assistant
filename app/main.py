@@ -5,7 +5,7 @@ from pathlib import Path
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
+from jinja2 import Environment, FileSystemLoader
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -36,7 +36,15 @@ app.add_middleware(
 )
 app.include_router(auth_router)
 app.mount("/static", StaticFiles(directory=_ROOT / "ui" / "static"), name="static")
-templates = Jinja2Templates(directory=_ROOT / "ui" / "templates")
+_jinja_env = Environment(
+    loader=FileSystemLoader(_ROOT / "ui" / "templates"),
+    autoescape=True,
+    auto_reload=False,
+)
+
+
+def _render(name: str, **ctx) -> HTMLResponse:
+    return HTMLResponse(_jinja_env.get_template(name).render(**ctx))
 
 
 @app.get("/health")
@@ -47,13 +55,10 @@ async def health():
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, user: dict = Depends(get_current_user)):
     mcp_alive = _mcp is not None and (_mcp._proc is None or _mcp._proc.returncode is None)
-    return templates.TemplateResponse(
+    return _render(
         "index.html",
-        {
-            "request": request,
-            "username": user["preferred_username"],
-            "mcp_status": "connected" if mcp_alive else "disconnected",
-        },
+        username=user["preferred_username"],
+        mcp_status="connected" if mcp_alive else "disconnected",
     )
 
 

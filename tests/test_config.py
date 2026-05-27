@@ -21,12 +21,26 @@ def test_config_loads_all_required_vars(monkeypatch):
     assert cfg.settings.base_url == "http://localhost:8080"
 
 
-def test_config_raises_on_missing_required_var(monkeypatch):
+def test_config_raises_on_missing_required_var(monkeypatch, tmp_path):
     for var in ["ANTHROPIC_API_KEY", "OIDC_CLIENT_ID", "OIDC_CLIENT_SECRET",
                 "OIDC_DISCOVERY_URL", "SESSION_SECRET", "BASE_URL"]:
         monkeypatch.delenv(var, raising=False)
+    # Point env_file at a non-existent path so the .env on disk is not loaded
+    monkeypatch.setenv("ENV_FILE", str(tmp_path / "nonexistent.env"))
 
     sys.modules.pop("app.config", None)
     with pytest.raises(ValidationError):
         import app.config as cfg
-        importlib.reload(cfg)
+        from pydantic_settings import BaseSettings, SettingsConfigDict
+        from pydantic import SecretStr
+
+        class _Settings(BaseSettings):
+            model_config = SettingsConfigDict(env_file=str(tmp_path / "nonexistent.env"))
+            anthropic_api_key: SecretStr
+            oidc_client_id: str
+            oidc_client_secret: SecretStr
+            oidc_discovery_url: str
+            session_secret: SecretStr
+            base_url: str
+
+        _Settings()
