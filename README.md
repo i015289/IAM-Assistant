@@ -4,7 +4,10 @@ A Claude Code–powered assistant for analyzing SAP IAM (Identity & Access Manag
 
 ## Overview
 
-This project lets you run natural-language IAM investigations against live ER6 data using Claude Code. It ships with domain skills for Treasury IAM and Cash Management IAM, plus a goal-driven autonomous agent (`/goal` + `/hermes`) and a persistent memo system (`/memo`) for saving findings across sessions.
+This project provides two modes for running natural-language IAM investigations against live ER6 data:
+
+- **Claude Code** — interactive CLI with domain skills for Treasury IAM and Cash Management IAM, a goal-driven autonomous agent (`/goal` + `/execute`), and a persistent memo system (`/memo`) for saving findings across sessions.
+- **Web UI** — a FastAPI application with a browser-based chat interface, Anthropic streaming, MCP tool execution, and OIDC authentication.
 
 ## Benefits
 
@@ -23,8 +26,8 @@ Three hooks enforce correctness without manual effort: memo writes are blocked i
 **5. Reusable skill-based architecture**
 Domain knowledge lives in versioned skill files, not conversation history. Any analyst invoking `/treasury-iam` or `/cash-iam` immediately gets full specialist context without re-explaining domain rules each session.
 
-**6. Autonomous multi-step investigation via `/hermes`**
-Complex analyses — validating all apps in a catalog, planning a FOE/BOE split across 53 apps — can be handed to Hermes, which chains queries, adapts to unexpected findings, and produces a structured report (Goal / Summary / Findings / Violations / Recommendations) without step-by-step prompting.
+**6. Autonomous multi-step investigation via `/execute`**
+Complex analyses — validating all apps in a catalog, planning a FOE/BOE split across 53 apps — can be handed to Execute, which chains queries, adapts to unexpected findings, and produces a structured report (Goal / Summary / Findings / Violations / Recommendations) without step-by-step prompting.
 
 **7. Validated, production-calibrated query patterns**
 Every query pattern in the skills was validated against live ER6 data (20 tests, 100% pass rate). Known pitfalls — `UP TO N ROWS` with `WHERE`, non-queryable tables, GUID key formats — are documented and worked around. New analysts get patterns that are known to work.
@@ -131,7 +134,7 @@ claude /Users/<you>/Joule_Workspace/iam-assistant
 conda run -n sapcli-env pip install -r mcp-server/requirements.txt
 ```
 
-The server script is `mcp-server/er6_mcp_server.py` and is already wired up in `.mcp.json`:
+The server script is `mcp-server/er6_mcp_server.py` and is already wired up in `.mcp.json` using a relative path — no path editing required:
 
 ```json
 {
@@ -139,13 +142,11 @@ The server script is `mcp-server/er6_mcp_server.py` and is already wired up in `
     "er6": {
       "command": "conda",
       "args": ["run", "--no-capture-output", "-n", "sapcli-env",
-               "python", "<absolute-path-to-repo>/mcp-server/er6_mcp_server.py"]
+               "python", "./mcp-server/er6_mcp_server.py"]
     }
   }
 }
 ```
-
-**The path in `.mcp.json` is hardcoded to an absolute path — update it to match your local checkout location before starting Claude Code.**
 
 #### 6. Verify MCP connectivity
 
@@ -224,7 +225,7 @@ claude C:\Users\<you>\Joule_Workspace\iam-assistant
 conda run -n sapcli-env pip install -r mcp-server\requirements.txt
 ```
 
-The server script is `mcp-server\er6_mcp_server.py` and is already wired up in `.mcp.json`:
+The server script is `mcp-server\er6_mcp_server.py` and is already wired up in `.mcp.json` using a relative path — no path editing required:
 
 ```json
 {
@@ -232,13 +233,11 @@ The server script is `mcp-server\er6_mcp_server.py` and is already wired up in `
     "er6": {
       "command": "conda",
       "args": ["run", "--no-capture-output", "-n", "sapcli-env",
-               "python", "C:/Users/<you>/Joule_Workspace/iam-assistant/mcp-server/er6_mcp_server.py"]
+               "python", "./mcp-server/er6_mcp_server.py"]
     }
   }
 }
 ```
-
-**The path in `.mcp.json` is hardcoded to an absolute path — update it to match your local checkout location before starting Claude Code.** Use forward slashes (`/`) or escaped backslashes (`\\`) in the JSON string.
 
 #### 6. Verify MCP connectivity
 
@@ -278,7 +277,7 @@ Skills can be activated in two ways:
 /treasury-iam   → Treasury IAM specialist (FOE/BOE SoD, T_DEAL_*, T_TOE_HR)
 /cash-iam       → Cash Management IAM specialist (F_CLM_*, four-eyes principle)
 /goal           → Decompose a high-level objective into a step-by-step plan
-/hermes         → Autonomously execute a plan against ER6
+/execute        → Autonomously execute a plan against ER6
 /memo           → Save, load, or manage persistent investigation memos
 ```
 
@@ -289,7 +288,7 @@ Skills can be activated in two ways:
 | `/treasury-iam` | "Treasury", "FOE", "BOE", "T_DEAL_*", "T_TOE_HR", "CLOUD_FI_TR_IAM", "hedge request", "Front/Back Office" |
 | `/cash-iam` | "Cash Management", "bank account", "F_CLM_BAM/BAI/BAIC/BAOR", "four-eyes", "submit/approve", "SAP_FIN_BC_CM_*" |
 | `/goal` | High-level objective phrasing: "validate all...", "analyze...", "I want to..." |
-| `/hermes` | "run the plan", "execute autonomously", direct objective with clear scope |
+| `/execute` | "run the plan", "execute autonomously", direct objective with clear scope |
 | `/memo` | "save memo", "remember this", "load memo", "what did we find", "resume", "show memos" |
 
 **When automatic selection may fail:** Vague questions without domain keywords — e.g. *"check the auth objects for this app"* — may not trigger any skill. Claude will answer from general knowledge instead of the specialist context. Fix this by either using explicit invocation or adding domain keywords (app ID, auth object name, catalog ID) to your question.
@@ -383,26 +382,26 @@ Captures a high-level IAM analysis objective and decomposes it into a concrete, 
 /goal Find all Treasury apps that hold both D2 and D3 TRFCT values on T_DEAL_PD
 ```
 
-### `/hermes`
+### `/execute`
 
-Autonomous execution agent. Works through an IAM analysis plan step by step — chaining ER6 queries, evaluating results, and adapting if findings require detours — without prompting at each step. Typically invoked after `/goal`, but can also be triggered directly with a clear objective. Produces a structured `=== Hermes Report ===` (Goal / Summary / Findings / Violations / Recommendations) on completion.
+Autonomous execution agent. Works through an IAM analysis plan step by step — chaining ER6 queries, evaluating results, and adapting if findings require detours — without prompting at each step. Typically invoked after `/goal`, but can also be triggered directly with a clear objective. Produces a structured `=== Execute Report ===` (Goal / Summary / Findings / Violations / Recommendations) on completion.
 
 **Example prompts:**
 ```
 # After /goal — execute the full plan
-/hermes
+/execute
 
 # Hedge SoD — full catalog sweep
-/hermes Validate T_TOE_HR SoD for all apps in SAP_FIN_BC_TRM_HM_HR_FOE_PC
+/execute Validate T_TOE_HR SoD for all apps in SAP_FIN_BC_TRM_HM_HR_FOE_PC
 
 # BRT forbidden combination check
-/hermes Check whether SAP_BR_TREASURY_SPECIALIST_BOE contains any FOE-forbidden combinations
+/execute Check whether SAP_BR_TREASURY_SPECIALIST_BOE contains any FOE-forbidden combinations
 
 # Single-app health check
-/hermes Run a health check on F5859_TRAN: auth objects, ACTVT values, catalog assignment, and BRT coverage
+/execute Run a health check on F5859_TRAN: auth objects, ACTVT values, catalog assignment, and BRT coverage
 
 # Cash four-eyes check
-/hermes Check whether SAP_BR_CASH_MANAGER violates the four-eyes principle across submit and approve catalogs
+/execute Check whether SAP_BR_CASH_MANAGER violates the four-eyes principle across submit and approve catalogs
 ```
 
 ### `/memo`
@@ -442,13 +441,13 @@ At session start, Claude automatically checks `INDEX.md` and surfaces any in-pro
 ```
 /goal Validate FOE/BOE SoD for all apps in CLOUD_FI_TR_IAM
         ↓  (plan presented)
-/hermes   ← executes all steps, queries ER6, produces report
+/execute  ← executes all steps, queries ER6, produces report
         ↓  (findings ready)
 /memo save trm-cloud-foe-boe-validation
         ↓  (next session — Claude auto-surfaces In Progress memos)
 /memo load trm-cloud-foe-boe-validation
         ↓
-/hermes Continue from Step 4 — validate remaining apps
+/execute Continue from Step 4 — validate remaining apps
 ```
 
 ## Hooks
@@ -695,18 +694,92 @@ Measured against live ER6 data (2026-05-15, 20 tests, 100% pass rate).
 - **Row count has modest impact:** 50-row result sets take ~2.5 s longer than single-row lookups against the same table.
 - **Repeat queries run ~19% faster** on second call due to server-side caching (observed on identical BRTBUC queries: 11,223 ms cold → 9,131 ms warm).
 
+## Web UI
+
+The `app/` directory contains a standalone web application for browser-based IAM chat. It runs the same Anthropic model and MCP tools as the Claude Code CLI, but provides a persistent URL you can share with team members.
+
+### Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Web framework | FastAPI + Uvicorn |
+| Chat streaming | Anthropic API (`claude-opus-4-7`), SSE |
+| ER6 tools | MCP subprocess over stdio (same `er6_mcp_server.py`) |
+| Auth | OIDC (Authlib) with signed session cookie; dev mode skips OIDC |
+| Templates | Jinja2 (`ui/templates/`) |
+| Static assets | `ui/static/` (CSS + JS) |
+
+### Configuration
+
+Create a `.env` file in the project root:
+
+```env
+ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_BASE_URL=https://api.anthropic.com   # optional, for Hyperspace proxy
+OIDC_CLIENT_ID=your-client-id
+OIDC_CLIENT_SECRET=your-client-secret
+OIDC_DISCOVERY_URL=https://your-idp/.well-known/openid-configuration
+SESSION_SECRET=a-long-random-string
+BASE_URL=http://localhost:8000
+```
+
+**Dev mode:** Set `OIDC_CLIENT_ID=your-client-id` (the placeholder default) to skip OIDC and auto-log in as `dev`.
+
+### Running the Web UI
+
+```bash
+# Install dependencies
+conda run -n sapcli-env pip install -r app/requirements.txt
+
+# Start the server
+conda run -n sapcli-env uvicorn app.main:app --reload
+```
+
+Then open `http://localhost:8000` in your browser.
+
+### Tests
+
+```bash
+conda run -n sapcli-env pytest tests/
+```
+
+---
+
 ## Project Structure
 
 ```
-IAM_Assistant/
+iam-assistant/
 ├── CLAUDE.md                   # Claude Code instructions (data dictionary, query setup, memo auto-load)
 ├── README.md                   # This file
-├── .sapcli.env                 # ER6 connection settings (not committed)
+├── pyproject.toml              # pytest configuration
+├── .sapcli.env                 # ER6 connection settings (not committed; fallback only)
+├── .env                        # Web UI settings (not committed)
+├── app/                        # Web UI application
+│   ├── main.py                 # FastAPI app, routes, MCP lifespan
+│   ├── auth.py                 # OIDC auth routes and session dependency
+│   ├── chat.py                 # Anthropic streaming chat with MCP tool execution
+│   ├── config.py               # Pydantic settings (loaded from .env)
+│   ├── mcp_client.py           # MCP subprocess client (stdio protocol)
+│   └── requirements.txt        # Python dependencies for the web app
+├── ui/
+│   ├── templates/index.html    # Jinja2 chat template
+│   └── static/
+│       ├── app.js              # Chat/streaming/tab logic
+│       └── style.css           # Layout and styles
+├── tests/                      # pytest test suite
+│   ├── conftest.py
+│   ├── test_auth.py
+│   ├── test_chat.py
+│   ├── test_config.py
+│   ├── test_main.py
+│   └── test_mcp_client.py
+├── mcp-server/
+│   └── er6_mcp_server.py       # MCP server exposing ER6 tools
 ├── skills/                     # Skill source files (mirrored from .claude/skills/ by sync hook)
 │   ├── treasury-iam.md
 │   ├── cash-iam.md
 │   ├── goal.md
-│   ├── hermes.md
+│   ├── execute.md
 │   └── memo.md
 └── .claude/
     ├── hooks/
@@ -721,13 +794,13 @@ IAM_Assistant/
     │   ├── treasury-iam.md     # Treasury IAM skill (FOE/BOE SoD, T_DEAL_*, T_TOE_HR)
     │   ├── cash-iam.md         # Cash Management IAM skill (F_CLM_* auth objects)
     │   ├── goal.md             # Goal decomposition skill
-    │   ├── hermes.md           # Autonomous multi-step execution agent
+    │   ├── execute.md          # Autonomous multi-step execution agent
     │   └── memo.md             # Persistent memo system
     ├── commands/
     │   ├── treasury-iam.md     # /treasury-iam slash command
     │   ├── cash-iam.md         # /cash-iam slash command
     │   ├── goal.md             # /goal slash command
-    │   ├── hermes.md           # /hermes slash command
+    │   ├── execute.md          # /execute slash command
     │   └── memo.md             # /memo slash command
     └── settings.json           # Hooks and permission configuration
 ```
