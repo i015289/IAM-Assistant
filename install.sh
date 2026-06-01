@@ -87,7 +87,7 @@ cat <<'EOF'
 
 Next steps:
   1. Edit .env           (fill in ANTHROPIC_API_KEY, OIDC_*, BASE_URL).
-  2. Edit .sapcli.env    (fill in SAP_HOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
+  2. Edit .sapcli.env    (fill in SAP_ASHOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
   3. Start the server:
        conda run -n sapcli-env uvicorn app.main:app --reload
 EOF

@@ -82,7 +82,7 @@ echo [OK] Install complete.
 echo.
 echo Next steps:
 echo   1. Edit .env           (fill in ANTHROPIC_API_KEY, OIDC_*, BASE_URL).
-echo   2. Edit .sapcli.env    (fill in SAP_HOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
+echo   2. Edit .sapcli.env    (fill in SAP_ASHOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
 echo   3. Start the server:
 echo        conda run -n sapcli-env uvicorn app.main:app --reload
 exit /b 0

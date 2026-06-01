@@ -58,12 +58,13 @@ sapcli --version
 Create a `.sapcli.env` file in the project root (not committed to source control):
 
 ```bash
-export SAP_HOST=<er6-hostname>
+export SAP_ASHOST=<er6-hostname>
 export SAP_PORT=<port>
+export SAP_SYSNR=00
 export SAP_CLIENT=<client>
 export SAP_USER=ANZEIGER
 export SAP_PASSWORD=display
-export SAP_SSL=true
+export SAP_SSL=yes
 ```
 
 Test connectivity:
@@ -144,24 +145,25 @@ sapcli --version
 
 ### 3. Configure ER6 connection
 
-Create a `.sapcli.env` file in the project root (not committed to source control). On Windows, use `set` instead of `export`:
+Create a `.sapcli.env` file in the project root (not committed to source control). The MCP server parses this file directly (looking for `export KEY=VALUE` lines), so use POSIX `export` syntax even on Windows — do **not** use cmd's `set` syntax:
 
-```cmd
-set SAP_HOST=<er6-hostname>
-set SAP_PORT=<port>
-set SAP_CLIENT=<client>
-set SAP_USER=ANZEIGER
-set SAP_PASSWORD=display
-set SAP_SSL=true
+```bash
+export SAP_ASHOST=<er6-hostname>
+export SAP_PORT=<port>
+export SAP_SYSNR=00
+export SAP_CLIENT=<client>
+export SAP_USER=ANZEIGER
+export SAP_PASSWORD=display
+export SAP_SSL=yes
 ```
 
-Test connectivity (in Anaconda Prompt):
+Test connectivity (in Anaconda Prompt — sapcli reads the env vars from the process environment, so set them inline for the test):
 
 ```cmd
-call .sapcli.env && conda run -n sapcli-env sapcli datapreview osql "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"
+set SAP_ASHOST=<er6-hostname>&& set SAP_PORT=<port>&& set SAP_SYSNR=00&& set SAP_CLIENT=<client>&& set SAP_USER=ANZEIGER&& set SAP_PASSWORD=display&& set SAP_SSL=yes&& conda run -n sapcli-env sapcli datapreview osql "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"
 ```
 
-> If you prefer PowerShell, use `$env:SAP_HOST = "<er6-hostname>"` style assignments and dot-source the file.
+(That one-liner is only for the connectivity test from the shell. The MCP server, which is what the web UI and Claude Code actually use, reads `.sapcli.env` itself and does not need any shell sourcing.)
 
 ### 4. Clone / open the project in Claude Code
 

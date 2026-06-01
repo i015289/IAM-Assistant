@@ -96,16 +96,22 @@ ensures relative paths work regardless of the user's current directory.
 ## File: `.sapcli.env.example` (new)
 
 This file is added to the repo as part of this work. Contents mirror the
-README's existing block:
+README's existing block, with two corrections caught in final review:
+sapcli reads `SAP_ASHOST` and `SAP_SYSNR` (not `SAP_HOST`), and prefers
+`SAP_SSL=yes` over `=true`. The README block had the wrong key names; the
+template uses the corrected ones, matching the working `.sapcli.env` that
+was previously committed (see commit 26a32d3 for the untrack of that
+file).
 
 ```bash
 # ER6 connection settings — edit with real values, do not commit.
-export SAP_HOST=<er6-hostname>
+export SAP_ASHOST=<er6-hostname>
 export SAP_PORT=<port>
+export SAP_SYSNR=00
 export SAP_CLIENT=<client>
 export SAP_USER=ANZEIGER
 export SAP_PASSWORD=display
-export SAP_SSL=true
+export SAP_SSL=yes
 ```
 
 `.gitignore` already excludes `.sapcli.env`, so the example file is the only
