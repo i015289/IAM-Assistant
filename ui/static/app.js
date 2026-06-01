@@ -1,5 +1,7 @@
-// Conversation history stored in sessionStorage
+// Conversation history + result tabs stored in sessionStorage so a refresh
+// inside the same browser tab keeps prior queries and results visible.
 const HISTORY_KEY = 'iam_chat_history';
+const TABS_KEY = 'iam_chat_tabs';
 const MAX_TABS = 10;
 
 let tabCount = 0;
@@ -11,6 +13,32 @@ function loadHistory() {
 
 function saveHistory(messages) {
   sessionStorage.setItem(HISTORY_KEY, JSON.stringify(messages));
+}
+
+function loadTabsState() {
+  try {
+    const raw = sessionStorage.getItem(TABS_KEY);
+    if (!raw) return null;
+    const state = JSON.parse(raw);
+    if (!state || !Array.isArray(state.tabs)) return null;
+    return state;
+  } catch { return null; }
+}
+
+function saveTabsState() {
+  // Snapshot current result tabs from the DOM. Welcome tab is excluded — it's
+  // always present in the HTML template.
+  const tabs = [];
+  document.querySelectorAll('#tab-bar .tab').forEach(t => {
+    const num = t.dataset.tab;
+    if (num === 'welcome') return;
+    const pane = document.getElementById(`pane-${num}`);
+    if (!pane) return;
+    tabs.push({ num, label: t.textContent, html: pane.innerHTML });
+  });
+  const activeEl = document.querySelector('#tab-bar .tab.active');
+  const activeTab = activeEl ? activeEl.dataset.tab : 'welcome';
+  sessionStorage.setItem(TABS_KEY, JSON.stringify({ tabCount, tabs, activeTab }));
 }
 
 // Auto-grow textarea up to 4 lines
@@ -25,6 +53,16 @@ document.getElementById('input').addEventListener('keydown', function (e) {
     e.preventDefault();
     sendMessage();
   }
+});
+
+// Delegated tab-bar click handler — reads data-tab from the clicked tab at
+// click time, so it stays correct even as tabs are added/removed. Replaces
+// per-tab `onclick = () => activateTab(tabCount)`, which captured the module-
+// level tabCount by reference and made every tab activate the latest one.
+document.getElementById('tab-bar').addEventListener('click', function (e) {
+  const tab = e.target.closest('.tab');
+  if (!tab || !this.contains(tab)) return;
+  activateTab(tab.dataset.tab);
 });
 
 function appendUserMessage(text) {
@@ -64,7 +102,6 @@ function openResultsTab(label) {
   tab.id = tabId;
   tab.dataset.tab = String(tabCount);
   tab.textContent = label;
-  tab.onclick = () => activateTab(tabCount);
   document.getElementById('tab-bar').appendChild(tab);
 
   // Add new pane
@@ -94,6 +131,7 @@ function activateTab(num) {
   document.querySelectorAll('.tab-pane').forEach(p => {
     p.classList.toggle('active', p.id === `pane-${num}`);
   });
+  saveTabsState();
 }
 
 function enableSortableTable(table) {
@@ -222,6 +260,7 @@ async function sendMessage() {
         activeTab.textContent = label;
       }
       renderMarkdown(resultPane, buffer);
+      saveTabsState();
     }
 
   } catch (err) {
@@ -236,3 +275,71 @@ async function sendMessage() {
     input.focus();
   }
 }
+
+// --- Startup: replay prior session into the DOM --------------------------
+
+function restoreChatMessages() {
+  // Re-render every prior turn into #messages so a refresh keeps the
+  // conversation visible. Mirrors appendUserMessage / appendAIMessageEl
+  // without the streaming cursor.
+  const messagesEl = document.getElementById('messages');
+  for (const msg of loadHistory()) {
+    if (msg.role === 'user') {
+      const el = document.createElement('div');
+      el.className = 'msg-user';
+      el.textContent = msg.content;
+      messagesEl.appendChild(el);
+    } else if (msg.role === 'assistant') {
+      const wrap = document.createElement('div');
+      wrap.className = 'msg-ai-wrap';
+      const avatar = document.createElement('div');
+      avatar.className = 'ai-avatar';
+      avatar.textContent = 'AI';
+      const bubble = document.createElement('div');
+      bubble.className = 'msg-ai';
+      bubble.textContent = msg.content;
+      wrap.appendChild(avatar);
+      wrap.appendChild(bubble);
+      messagesEl.appendChild(wrap);
+    }
+  }
+  scrollToBottom();
+}
+
+function restoreTabs() {
+  const state = loadTabsState();
+  if (!state || state.tabs.length === 0) return;
+
+  const tabBar = document.getElementById('tab-bar');
+  const tabContent = document.getElementById('tab-content');
+
+  for (const t of state.tabs) {
+    const tab = document.createElement('div');
+    tab.className = 'tab';
+    tab.id = `tab-${t.num}`;
+    tab.dataset.tab = t.num;
+    tab.textContent = t.label;
+    tabBar.appendChild(tab);
+
+    const pane = document.createElement('div');
+    pane.className = 'tab-pane';
+    pane.id = `pane-${t.num}`;
+    // The stored html was already produced by DOMPurify.sanitize(...) before
+    // being assigned via innerHTML in renderMarkdown, so re-assigning it here
+    // does not cross a new trust boundary.
+    pane.innerHTML = t.html;
+    pane.querySelectorAll('table').forEach(enableSortableTable);
+    tabContent.appendChild(pane);
+  }
+
+  // Restore tabCount so the next openResultsTab() doesn't collide with
+  // restored tab ids.
+  tabCount = Number(state.tabCount) || state.tabs.reduce(
+    (m, t) => Math.max(m, Number(t.num) || 0), 0,
+  );
+
+  activateTab(state.activeTab || 'welcome');
+}
+
+restoreChatMessages();
+restoreTabs();
