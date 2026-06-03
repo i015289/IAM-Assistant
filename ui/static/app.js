@@ -665,7 +665,7 @@ async function sendMessage() {
     if (!streamErrored && !stopped) {
       renderMarkdown(aiEl, buffer);
     }
-    if (!streamErrored) {
+    if (!streamErrored && !stopped) {
       attachRegenButton(aiEl.closest('.msg-ai-wrap'));
     }
 
@@ -676,6 +676,12 @@ async function sendMessage() {
       errEl.className = 'msg-error';
       errEl.textContent = `Error: ${err.message}`;
       aiEl.appendChild(errEl);
+    } else if (buffer.length > 0) {
+      // reader.cancel() may reject the read promise; persist partial content
+      renderMarkdown(aiEl, buffer);
+      history.push({ role: 'assistant', content: buffer });
+      saveHistory(history);
+      renderSidebar();
     }
   } finally {
     sendBtn.onclick = sendMessage;
