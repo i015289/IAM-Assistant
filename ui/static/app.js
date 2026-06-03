@@ -107,6 +107,7 @@ async function sendMessage() {
     const decoder = new TextDecoder();
     let partial = '';
     let streamDone = false;
+    let streamErrored = false;
 
     while (!streamDone) {
       const { done, value } = await reader.read();
@@ -135,6 +136,7 @@ async function sendMessage() {
           errEl.className = 'msg-error';
           errEl.textContent = payload.replace('[ERROR] ', '');
           aiEl.appendChild(errEl);
+          streamErrored = true;
           streamDone = true;
           break;
         }
@@ -154,7 +156,11 @@ async function sendMessage() {
 
     // Re-render the left chat bubble with markdown now that streaming is done.
     // During streaming we appended plain text to avoid mid-parse layout flicker.
-    renderMarkdown(aiEl, buffer);
+    // Skip when the stream ended in an error — that path already wrote a
+    // .msg-error span to the bubble that we must not clobber.
+    if (!streamErrored) {
+      renderMarkdown(aiEl, buffer);
+    }
 
   } catch (err) {
     aiEl.querySelector('.cursor')?.remove();
