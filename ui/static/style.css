@@ -31,20 +31,59 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .username { color: var(--accent); font-size: 12px; }
 .signout { color: var(--muted); font-size: 12px; text-decoration: none; }
 .signout:hover { color: var(--text); }
-#new-session-btn {
-  background: transparent; color: var(--muted);
-  border: 1px solid var(--border); border-radius: 6px;
-  padding: 4px 10px; font-size: 12px; font-family: inherit;
-  cursor: pointer;
-}
-#new-session-btn:hover { color: var(--text); border-color: var(--accent); }
-
 /* Layout */
 #layout {
   display: flex;
   height: calc(100vh - var(--header-h));
   overflow: hidden;
 }
+
+/* Sessions sidebar */
+#sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+#sidebar-new-btn {
+  margin: 12px; padding: 8px 12px;
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border); border-radius: 6px;
+  font-size: 13px; font-family: inherit; cursor: pointer;
+  text-align: left;
+}
+#sidebar-new-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+#session-list {
+  flex: 1; overflow-y: auto; padding: 0 4px 12px;
+  display: flex; flex-direction: column; gap: 2px;
+}
+.session-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px; border-radius: 6px;
+  cursor: pointer; user-select: none;
+  border-left: 3px solid transparent;
+}
+.session-row:hover { background: var(--bg); }
+.session-row.active { background: var(--bg); border-left-color: var(--accent); }
+.session-title {
+  flex: 1; min-width: 0;
+  font-size: 13px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.session-title.editing {
+  background: var(--bg); border: 1px solid var(--accent); border-radius: 4px;
+  padding: 2px 4px; outline: none;
+}
+.session-time { font-size: 11px; color: var(--muted); flex-shrink: 0; }
+.session-delete {
+  width: 20px; height: 20px; border: none; background: transparent;
+  color: var(--muted); cursor: pointer; font-size: 14px; line-height: 1;
+  visibility: hidden; flex-shrink: 0;
+}
+.session-row:hover .session-delete { visibility: visible; }
+.session-delete:hover { color: var(--red); }
 
 /* Chat panel */
 #chat-panel {
