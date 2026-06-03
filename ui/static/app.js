@@ -79,6 +79,55 @@ const Sessions = {
   },
 };
 
+// User-created prompt templates, persisted to localStorage.
+// Built-in templates live in window.PROMPT_TEMPLATES; user ones are appended
+// at render time as a "Custom" category.
+const USER_TEMPLATES_KEY = 'iam_user_templates';
+
+const UserTemplates = {
+  list() {
+    try { return JSON.parse(localStorage.getItem(USER_TEMPLATES_KEY) || '[]'); }
+    catch { return []; }
+  },
+
+  _write(list) {
+    localStorage.setItem(USER_TEMPLATES_KEY, JSON.stringify(list));
+  },
+
+  create(title, prompt, { now = Date.now() } = {}) {
+    const t = (title || '').trim();
+    const p = (prompt || '').trim();
+    if (!t) throw new Error('Title is required.');
+    if (!p) throw new Error('Prompt is required.');
+    if (t.length > 60) throw new Error('Title must be 60 chars or fewer.');
+    if (p.length > 2000) throw new Error('Prompt must be 2000 chars or fewer.');
+    const id = crypto.randomUUID().slice(0, 8);
+    const list = UserTemplates.list();
+    list.push({ id, title: t, prompt: p, createdAt: now });
+    UserTemplates._write(list);
+    return id;
+  },
+
+  update(id, title, prompt) {
+    const t = (title || '').trim();
+    const p = (prompt || '').trim();
+    if (!t) throw new Error('Title is required.');
+    if (!p) throw new Error('Prompt is required.');
+    if (t.length > 60) throw new Error('Title must be 60 chars or fewer.');
+    if (p.length > 2000) throw new Error('Prompt must be 2000 chars or fewer.');
+    const list = UserTemplates.list();
+    const idx = list.findIndex(x => x.id === id);
+    if (idx < 0) return;
+    list[idx] = { ...list[idx], title: t, prompt: p };
+    UserTemplates._write(list);
+  },
+
+  delete(id) {
+    const list = UserTemplates.list().filter(x => x.id !== id);
+    UserTemplates._write(list);
+  },
+};
+
 // loadHistory / saveHistory operate on the active session.
 function loadHistory() {
   return Sessions.getMessages(Sessions.getActive());
