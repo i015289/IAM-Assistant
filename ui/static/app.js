@@ -387,8 +387,13 @@ function fillInputFromTemplate(prompt) {
   // Trigger the existing autosize handler (registered with addEventListener('input', ...)).
   input.dispatchEvent(new Event('input'));
   input.focus();
-  // Move caret to the end so the user can edit immediately.
-  input.setSelectionRange(prompt.length, prompt.length);
+  // Auto-select the first placeholder (e.g. <APP_ID>) so the user can type to replace it.
+  const match = prompt.match(/<[A-Z][A-Z0-9_]*>/);
+  if (match) {
+    input.setSelectionRange(match.index, match.index + match[0].length);
+  } else {
+    input.setSelectionRange(prompt.length, prompt.length);
+  }
 }
 
 function hideWelcome() {
@@ -633,7 +638,9 @@ function renderSidebar() {
 
     const time = document.createElement('span');
     time.className = 'session-time';
-    time.textContent = relativeTime(s.updatedAt);
+    const msgCount = Sessions.getMessages(s.id).length;
+    const rel = relativeTime(s.updatedAt);
+    time.textContent = msgCount > 0 ? `${msgCount} · ${rel}` : rel;
 
     const del = document.createElement('button');
     del.className = 'session-delete';
