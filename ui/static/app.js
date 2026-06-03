@@ -420,7 +420,7 @@ function appendUserMessage(text) {
 function appendAIMessageEl() {
   const wrap = document.createElement('div');
   wrap.className = 'msg-ai-wrap';
-  wrap.innerHTML = '<div class="ai-avatar">AI</div><div class="msg-ai"><span class="cursor">▍</span></div>';
+  wrap.innerHTML = '<div class="ai-avatar">⚡</div><div class="msg-ai"><span class="cursor">▍</span></div>';
   document.getElementById('messages').appendChild(wrap);
   scrollToBottom();
   return wrap.querySelector('.msg-ai');
@@ -745,7 +745,7 @@ function restoreChatMessages() {
       wrap.className = 'msg-ai-wrap';
       const avatar = document.createElement('div');
       avatar.className = 'ai-avatar';
-      avatar.textContent = 'AI';
+      avatar.textContent = '⚡';
       const bubble = document.createElement('div');
       bubble.className = 'msg-ai';
       renderMarkdown(bubble, msg.content);
@@ -808,3 +808,4 @@ if (loadHistory().length === 0) {
 
 renderSidebar();
 restoreChatMessages();
+setInterval(() => renderSidebar(), 60_000);
