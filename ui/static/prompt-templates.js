@@ -14,6 +14,16 @@ window.PROMPT_TEMPLATES = [
   { category: 'Getting Started', title: 'How do roles work?',
     prompt: 'Walk me through how a Business Role Template gets composed from Business Catalogs and apps, and how those map to PFCG roles in SAP.' },
 
+  // General
+  { category: 'General', title: 'App → Catalog mapping',
+    prompt: 'List all catalogs that include app <APP_ID>.' },
+  { category: 'General', title: 'Restriction type coverage',
+    prompt: 'Check restriction type coverage for <BC_ID>.' },
+  { category: 'General', title: 'BRT catalog tree',
+    prompt: 'Show the full catalog tree for Business Role Template <BRT_ID>.' },
+  { category: 'General', title: 'Auth object usage',
+    prompt: 'Find all apps that use authorization object <AUTH_OBJECT>.' },
+
   // Treasury IAM
   { category: 'Treasury IAM', title: 'FOE/BOE SoD validation',
     prompt: 'For app <APP_ID>, validate whether it is compliant with FOE or BOE SoD rules.' },
@@ -33,14 +43,4 @@ window.PROMPT_TEMPLATES = [
     prompt: 'For Business Catalog <BC_ID>, identify whether any access combination violates the four-eyes principle or introduces SoD risks.' },
   { category: 'Cash Management', title: 'IAM health check',
     prompt: 'For IAM App ID <IAM_APP_ID>, run a full IAM health check including authorization objects, activity sets, catalog assignments, and BRT coverage.' },
-
-  // General
-  { category: 'General', title: 'App → Catalog mapping',
-    prompt: 'List all catalogs that include app <APP_ID>.' },
-  { category: 'General', title: 'Restriction type coverage',
-    prompt: 'Check restriction type coverage for <BC_ID>.' },
-  { category: 'General', title: 'BRT catalog tree',
-    prompt: 'Show the full catalog tree for Business Role Template <BRT_ID>.' },
-  { category: 'General', title: 'Auth object usage',
-    prompt: 'Find all apps that use authorization object <AUTH_OBJECT>.' },
 ];
