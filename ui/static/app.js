@@ -301,7 +301,7 @@ function restoreChatMessages() {
       avatar.textContent = 'AI';
       const bubble = document.createElement('div');
       bubble.className = 'msg-ai';
-      bubble.textContent = msg.content;
+      renderMarkdown(bubble, msg.content);
       wrap.appendChild(avatar);
       wrap.appendChild(bubble);
       messagesEl.appendChild(wrap);
