@@ -149,34 +149,175 @@ function showWelcome() {
 }
 
 function populateWelcomeTemplates(container) {
-  if (!container || !Array.isArray(window.PROMPT_TEMPLATES)) return;
+  if (!container) return;
+  container.innerHTML = '';
+
+  // Built-in templates first.
   const seenCategories = new Map(); // category -> .welcome-cards element
-  for (const t of window.PROMPT_TEMPLATES) {
-    let cards = seenCategories.get(t.category);
-    if (!cards) {
-      const heading = document.createElement('div');
-      heading.className = 'welcome-category-heading';
-      heading.textContent = t.category;
-      container.appendChild(heading);
-      cards = document.createElement('div');
-      cards.className = 'welcome-cards';
-      container.appendChild(cards);
-      seenCategories.set(t.category, cards);
+  if (Array.isArray(window.PROMPT_TEMPLATES)) {
+    for (const t of window.PROMPT_TEMPLATES) {
+      const cards = ensureCategory(container, seenCategories, t.category);
+      cards.appendChild(makeBuiltInCard(t));
     }
-    const card = document.createElement('button');
-    card.type = 'button';
-    card.className = 'welcome-card';
-    const title = document.createElement('div');
-    title.className = 'card-title';
-    title.textContent = t.title;
-    const sub = document.createElement('div');
-    sub.className = 'card-subtitle';
-    sub.textContent = t.prompt;
-    card.appendChild(title);
-    card.appendChild(sub);
-    card.addEventListener('click', () => fillInputFromTemplate(t.prompt));
-    cards.appendChild(card);
   }
+
+  // Custom group — always shown so the "+ Add template" card is discoverable.
+  const customCards = ensureCategory(container, seenCategories, 'Custom');
+  for (const t of UserTemplates.list()) {
+    customCards.appendChild(makeCustomCard(t, container));
+  }
+  customCards.appendChild(makeAddCard(container));
+}
+
+function ensureCategory(container, seenCategories, category) {
+  let cards = seenCategories.get(category);
+  if (cards) return cards;
+  const heading = document.createElement('div');
+  heading.className = 'welcome-category-heading';
+  heading.textContent = category;
+  container.appendChild(heading);
+  cards = document.createElement('div');
+  cards.className = 'welcome-cards';
+  container.appendChild(cards);
+  seenCategories.set(category, cards);
+  return cards;
+}
+
+function makeBuiltInCard(t) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'welcome-card';
+  const title = document.createElement('div');
+  title.className = 'card-title';
+  title.textContent = t.title;
+  const sub = document.createElement('div');
+  sub.className = 'card-subtitle';
+  sub.textContent = t.prompt;
+  card.appendChild(title);
+  card.appendChild(sub);
+  card.addEventListener('click', () => fillInputFromTemplate(t.prompt));
+  return card;
+}
+
+function makeCustomCard(t, container) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'welcome-card custom';
+  const title = document.createElement('div');
+  title.className = 'card-title';
+  title.textContent = t.title;
+  const sub = document.createElement('div');
+  sub.className = 'card-subtitle';
+  sub.textContent = t.prompt;
+  card.appendChild(title);
+  card.appendChild(sub);
+
+  const actions = document.createElement('div');
+  actions.className = 'card-actions';
+  const editBtn = document.createElement('button');
+  editBtn.type = 'button';
+  editBtn.className = 'card-action-btn edit';
+  editBtn.title = 'Edit template';
+  editBtn.textContent = '✎';
+  editBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    renderWelcomeForm(container, t);
+  });
+  const delBtn = document.createElement('button');
+  delBtn.type = 'button';
+  delBtn.className = 'card-action-btn delete';
+  delBtn.title = 'Delete template';
+  delBtn.textContent = '×';
+  delBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!confirm(`Delete template "${t.title}"?`)) return;
+    UserTemplates.delete(t.id);
+    populateWelcomeTemplates(container);
+  });
+  actions.appendChild(editBtn);
+  actions.appendChild(delBtn);
+  card.appendChild(actions);
+
+  card.addEventListener('click', () => fillInputFromTemplate(t.prompt));
+  return card;
+}
+
+function makeAddCard(container) {
+  const card = document.createElement('button');
+  card.type = 'button';
+  card.className = 'welcome-card add-card';
+  card.textContent = '+ Add template';
+  card.addEventListener('click', () => renderWelcomeForm(container, null));
+  return card;
+}
+
+function renderWelcomeForm(container, existing) {
+  container.innerHTML = '';
+  const form = document.createElement('div');
+  form.className = 'welcome-form';
+
+  const heading = document.createElement('h3');
+  heading.textContent = existing ? 'Edit template' : 'Add template';
+  form.appendChild(heading);
+
+  const titleLabel = document.createElement('label');
+  titleLabel.textContent = 'Title';
+  const titleInput = document.createElement('input');
+  titleInput.type = 'text';
+  titleInput.maxLength = 60;
+  titleInput.value = existing ? existing.title : '';
+  titleLabel.appendChild(titleInput);
+  form.appendChild(titleLabel);
+
+  const promptLabel = document.createElement('label');
+  promptLabel.textContent = 'Prompt';
+  const promptArea = document.createElement('textarea');
+  promptArea.maxLength = 2000;
+  promptArea.value = existing ? existing.prompt : '';
+  promptLabel.appendChild(promptArea);
+  form.appendChild(promptLabel);
+
+  const errorEl = document.createElement('div');
+  errorEl.className = 'welcome-form-error';
+  form.appendChild(errorEl);
+
+  const actions = document.createElement('div');
+  actions.className = 'welcome-form-actions';
+  const cancelBtn = document.createElement('button');
+  cancelBtn.type = 'button';
+  cancelBtn.className = 'btn-secondary';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.addEventListener('click', () => populateWelcomeTemplates(container));
+  const saveBtn = document.createElement('button');
+  saveBtn.type = 'button';
+  saveBtn.className = 'btn-primary';
+  saveBtn.textContent = existing ? 'Save changes' : 'Save template';
+
+  const updateSaveEnabled = () => {
+    saveBtn.disabled = !titleInput.value.trim() || !promptArea.value.trim();
+  };
+  titleInput.addEventListener('input', updateSaveEnabled);
+  promptArea.addEventListener('input', updateSaveEnabled);
+  updateSaveEnabled();
+
+  saveBtn.addEventListener('click', () => {
+    try {
+      if (existing) {
+        UserTemplates.update(existing.id, titleInput.value, promptArea.value);
+      } else {
+        UserTemplates.create(titleInput.value, promptArea.value);
+      }
+      populateWelcomeTemplates(container);
+    } catch (err) {
+      errorEl.textContent = err.message;
+    }
+  });
+  actions.appendChild(cancelBtn);
+  actions.appendChild(saveBtn);
+  form.appendChild(actions);
+
+  container.appendChild(form);
+  titleInput.focus();
 }
 
 function fillInputFromTemplate(prompt) {
