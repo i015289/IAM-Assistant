@@ -181,13 +181,17 @@ async function sendMessage() {
   history.push({ role: 'user', content: text });
   saveHistory(history);
 
-  // Auto-title from the first user message of the session.
+  // Auto-title from the first user message — but only if the user has not
+  // renamed the session yet (default title still in place).
   if (isFirstUserMessage) {
     const activeId = Sessions.getActive();
-    const t = text.trim();
-    const newTitle = t.length > 40 ? t.slice(0, 40) + '…' : t;
-    Sessions.setTitle(activeId, newTitle || 'New session');
-    renderSidebar();
+    const meta = Sessions.list().find(s => s.id === activeId);
+    if (meta && meta.title === 'New session') {
+      const t = text.trim();
+      const newTitle = t.length > 40 ? t.slice(0, 40) + '…' : t;
+      Sessions.setTitle(activeId, newTitle || 'New session');
+      renderSidebar();
+    }
   }
 
   const aiEl = appendAIMessageEl();
@@ -212,7 +216,24 @@ async function sendMessage() {
 
     while (!streamDone) {
       const { done, value } = await reader.read();
-      if (done) break;
+      if (done) {
+        // Server closed the stream without [DONE] — likely a network/proxy
+        // timeout. Persist whatever partial reply we have, mark as errored,
+        // and append a small notice to the bubble.
+        aiEl.querySelector('.cursor')?.remove();
+        if (buffer.length > 0) {
+          renderMarkdown(aiEl, buffer);
+          history.push({ role: 'assistant', content: buffer });
+          saveHistory(history);
+          renderSidebar();
+        }
+        const errEl = document.createElement('span');
+        errEl.className = 'msg-error';
+        errEl.textContent = '(connection ended without completion)';
+        aiEl.appendChild(errEl);
+        streamErrored = true;
+        break;
+      }
 
       partial += decoder.decode(value, { stream: true });
       const lines = partial.split('\n');
@@ -447,10 +468,10 @@ function migrateLegacyHistory() {
   const id = Sessions.create({ title });
   Sessions.saveMessages(id, legacy);
   Sessions.setActive(id);
-  sessionStorage.removeItem('iam_chat_history');
 }
 
 migrateLegacyHistory();
+sessionStorage.removeItem('iam_chat_history');
 
 // Sidebar `+ New` button: create a fresh session and switch to it.
 document.getElementById('sidebar-new-btn').addEventListener('click', () => {

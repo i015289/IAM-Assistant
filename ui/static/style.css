@@ -75,6 +75,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .session-title.editing {
   background: var(--bg); border: 1px solid var(--accent); border-radius: 4px;
   padding: 2px 4px; outline: none;
+  overflow: visible; white-space: normal;
 }
 .session-time { font-size: 11px; color: var(--muted); flex-shrink: 0; }
 .session-delete {
