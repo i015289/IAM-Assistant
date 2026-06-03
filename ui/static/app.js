@@ -263,6 +263,10 @@ async function sendMessage() {
       saveTabsState();
     }
 
+    // Re-render the left chat bubble with markdown now that streaming is done.
+    // During streaming we appended plain text to avoid mid-parse layout flicker.
+    renderMarkdown(aiEl, buffer);
+
   } catch (err) {
     aiEl.querySelector('.cursor')?.remove();
     const errEl = document.createElement('span');
