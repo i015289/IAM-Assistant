@@ -479,12 +479,72 @@ function renderMarkdown(pane, raw) {
   enableCopyButtons(pane);
 }
 
+function removeRegenButtons() {
+  document.querySelectorAll('.msg-actions').forEach(el => el.remove());
+}
+
+function attachRegenButton(wrapEl) {
+  removeRegenButtons();
+  if (!wrapEl) return;
+  const actions = document.createElement('div');
+  actions.className = 'msg-actions';
+  const btn = document.createElement('button');
+  btn.className = 'regen-btn';
+  btn.textContent = '↺ Regenerate';
+  btn.addEventListener('click', async () => {
+    const history = loadHistory();
+    const lastUserIdx = [...history].map((m, i) => m.role === 'user' ? i : -1)
+                                    .filter(i => i >= 0).at(-1);
+    if (lastUserIdx === undefined) return;
+    const lastUserContent = history[lastUserIdx].content;
+    const withoutLast = history.slice(0, lastUserIdx);
+    Sessions.saveMessages(Sessions.getActive(), withoutLast);
+    removeRegenButtons();
+    const messages = document.getElementById('messages');
+    if (messages.lastElementChild) messages.lastElementChild.remove(); // ai wrap
+    if (messages.lastElementChild) messages.lastElementChild.remove(); // user bubble
+    const input = document.getElementById('input');
+    input.value = lastUserContent;
+    input.dispatchEvent(new Event('input'));
+    await sendMessage();
+  });
+  actions.appendChild(btn);
+  wrapEl.insertAdjacentElement('afterend', actions);
+}
+
+function resetInputUI() {
+  const sendBtn = document.getElementById('send-btn');
+  const input = document.getElementById('input');
+  sendBtn.textContent = 'Send';
+  sendBtn.style.background = '';
+  sendBtn.style.color = '';
+  sendBtn.disabled = false;
+  input.disabled = false;
+  input.placeholder = 'Ask about roles, catalogs, SoD…';
+  input.style.opacity = '';
+  input.focus();
+}
+
+function setGeneratingUI(onStop) {
+  const sendBtn = document.getElementById('send-btn');
+  const input = document.getElementById('input');
+  sendBtn.textContent = '■ Stop';
+  sendBtn.style.background = 'var(--red)';
+  sendBtn.style.color = 'var(--bg)';
+  sendBtn.disabled = false;
+  sendBtn.onclick = onStop;
+  input.disabled = true;
+  input.placeholder = 'Generating…';
+  input.style.opacity = '0.5';
+}
+
 async function sendMessage() {
   const input = document.getElementById('input');
   const text = input.value.trim();
   if (!text) return;
 
   hideWelcome();
+  removeRegenButtons();
 
   const sendBtn = document.getElementById('send-btn');
   input.value = '';
@@ -499,8 +559,6 @@ async function sendMessage() {
   history.push({ role: 'user', content: text });
   saveHistory(history);
 
-  // Auto-title from the first user message — but only if the user has not
-  // renamed the session yet (default title still in place).
   if (isFirstUserMessage) {
     const activeId = Sessions.getActive();
     const meta = Sessions.list().find(s => s.id === activeId);
@@ -514,6 +572,15 @@ async function sendMessage() {
 
   const aiEl = appendAIMessageEl();
   let buffer = '';
+  let reader = null;
+  let stopped = false;
+
+  const stopHandler = () => {
+    stopped = true;
+    reader?.cancel();
+  };
+
+  setGeneratingUI(stopHandler);
 
   try {
     const response = await fetch('/chat', {
@@ -522,11 +589,9 @@ async function sendMessage() {
       body: JSON.stringify({ messages: history }),
     });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-    const reader = response.body.getReader();
+    reader = response.body.getReader();
     const decoder = new TextDecoder();
     let partial = '';
     let streamDone = false;
@@ -534,10 +599,7 @@ async function sendMessage() {
 
     while (!streamDone) {
       const { done, value } = await reader.read();
-      if (done) {
-        // Server closed the stream without [DONE] — likely a network/proxy
-        // timeout. Persist whatever partial reply we have, mark as errored,
-        // and append a small notice to the bubble.
+      if (done || stopped) {
         aiEl.querySelector('.cursor')?.remove();
         if (buffer.length > 0) {
           renderMarkdown(aiEl, buffer);
@@ -545,24 +607,31 @@ async function sendMessage() {
           saveHistory(history);
           renderSidebar();
         }
-        const errEl = document.createElement('span');
-        errEl.className = 'msg-error';
-        errEl.textContent = '(connection ended without completion)';
-        aiEl.appendChild(errEl);
-        streamErrored = true;
+        if (stopped) {
+          const errEl = document.createElement('span');
+          errEl.className = 'msg-error';
+          errEl.textContent = '(stopped)';
+          aiEl.appendChild(errEl);
+        } else {
+          const errEl = document.createElement('span');
+          errEl.className = 'msg-error';
+          errEl.textContent = '(connection ended without completion)';
+          aiEl.appendChild(errEl);
+          streamErrored = true;
+        }
+        streamDone = true;
         break;
       }
 
       partial += decoder.decode(value, { stream: true });
       const lines = partial.split('\n');
-      partial = lines.pop() ?? ''; // keep incomplete line
+      partial = lines.pop() ?? '';
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const payload = line.slice(6);
 
         if (payload === '[DONE]') {
-          // Finalize
           aiEl.querySelector('.cursor')?.remove();
           history.push({ role: 'assistant', content: buffer });
           saveHistory(history);
@@ -582,12 +651,10 @@ async function sendMessage() {
           break;
         }
 
-        // Normal text chunk (JSON-encoded string)
         let chunk;
         try { chunk = JSON.parse(payload); } catch { chunk = payload; }
         buffer += chunk;
 
-        // Update chat bubble (plain text, no markdown during streaming)
         const cursor = aiEl.querySelector('.cursor');
         const textNode = document.createTextNode(chunk);
         aiEl.insertBefore(textNode, cursor);
@@ -595,24 +662,24 @@ async function sendMessage() {
       }
     }
 
-    // Re-render the left chat bubble with markdown now that streaming is done.
-    // During streaming we appended plain text to avoid mid-parse layout flicker.
-    // Skip when the stream ended in an error — that path already wrote a
-    // .msg-error span to the bubble that we must not clobber.
-    if (!streamErrored) {
+    if (!streamErrored && !stopped) {
       renderMarkdown(aiEl, buffer);
+    }
+    if (!streamErrored) {
+      attachRegenButton(aiEl.closest('.msg-ai-wrap'));
     }
 
   } catch (err) {
-    aiEl.querySelector('.cursor')?.remove();
-    const errEl = document.createElement('span');
-    errEl.className = 'msg-error';
-    errEl.textContent = `Error: ${err.message}`;
-    aiEl.appendChild(errEl);
+    if (!stopped) {
+      aiEl.querySelector('.cursor')?.remove();
+      const errEl = document.createElement('span');
+      errEl.className = 'msg-error';
+      errEl.textContent = `Error: ${err.message}`;
+      aiEl.appendChild(errEl);
+    }
   } finally {
-    sendBtn.disabled = false;
-    input.disabled = false;
-    input.focus();
+    sendBtn.onclick = sendMessage;
+    resetInputUI();
   }
 }
 
