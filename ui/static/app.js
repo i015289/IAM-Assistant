@@ -178,6 +178,16 @@ async function sendMessage() {
   history.push({ role: 'user', content: text });
   saveHistory(history);
 
+  // Auto-title an untouched session from the first user message.
+  const activeId = Sessions.getActive();
+  const meta = Sessions.list().find(s => s.id === activeId);
+  if (meta && meta.title === 'New session') {
+    const t = text.trim();
+    const newTitle = t.length > 40 ? t.slice(0, 40) + '…' : t;
+    Sessions.setTitle(activeId, newTitle || 'New session');
+    renderSidebar();
+  }
+
   const aiEl = appendAIMessageEl();
   let buffer = '';
 
@@ -215,6 +225,7 @@ async function sendMessage() {
           aiEl.querySelector('.cursor')?.remove();
           history.push({ role: 'assistant', content: buffer });
           saveHistory(history);
+          renderSidebar();
           streamDone = true;
           break;
         }
@@ -262,6 +273,124 @@ async function sendMessage() {
     input.disabled = false;
     input.focus();
   }
+}
+
+// --- Sidebar rendering & session switching -------------------------------
+
+function relativeTime(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return 'just now';
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h`;
+  return `${Math.floor(diff / 86_400_000)}d`;
+}
+
+function renderSidebar() {
+  const list = document.getElementById('session-list');
+  const activeId = Sessions.getActive();
+  list.innerHTML = '';
+  for (const s of Sessions.list()) {
+    const row = document.createElement('div');
+    row.className = 'session-row' + (s.id === activeId ? ' active' : '');
+    row.dataset.id = s.id;
+
+    const title = document.createElement('div');
+    title.className = 'session-title';
+    title.textContent = s.title;
+    title.title = s.title;
+
+    const time = document.createElement('span');
+    time.className = 'session-time';
+    time.textContent = relativeTime(s.updatedAt);
+
+    const del = document.createElement('button');
+    del.className = 'session-delete';
+    del.type = 'button';
+    del.title = 'Delete session';
+    del.textContent = '×';
+
+    row.appendChild(title);
+    row.appendChild(time);
+    row.appendChild(del);
+
+    // Click row → switch (but ignore clicks that originated on the delete
+    // button or while editing the title).
+    row.addEventListener('click', (e) => {
+      if (e.target === del) return;
+      if (title.classList.contains('editing')) return;
+      if (s.id !== Sessions.getActive()) switchSession(s.id);
+    });
+
+    // Double-click title → inline rename.
+    title.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      beginRename(title, s.id, s.title);
+    });
+
+    // Click × → confirm and delete.
+    del.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (!confirm(`Delete session "${s.title}"?`)) return;
+      const wasActive = (s.id === Sessions.getActive());
+      const nextActive = Sessions.delete(s.id);
+      if (wasActive) {
+        if (nextActive) {
+          switchSession(nextActive);
+        } else {
+          // List empty — getActive will auto-create a fresh one.
+          const fresh = Sessions.getActive();
+          switchSession(fresh);
+        }
+      } else {
+        renderSidebar();
+      }
+    });
+
+    list.appendChild(row);
+  }
+}
+
+function beginRename(titleEl, id, originalTitle) {
+  titleEl.classList.add('editing');
+  titleEl.contentEditable = 'plaintext-only';
+  titleEl.textContent = originalTitle;
+  titleEl.focus();
+  // Select all text inside the editable element.
+  const range = document.createRange();
+  range.selectNodeContents(titleEl);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(range);
+
+  let finished = false;
+  const finish = (commit) => {
+    if (finished) return;
+    finished = true;
+    titleEl.contentEditable = 'false';
+    titleEl.classList.remove('editing');
+    const newTitle = titleEl.textContent.trim().slice(0, 80);
+    if (commit && newTitle && newTitle !== originalTitle) {
+      Sessions.setTitle(id, newTitle);
+    }
+    renderSidebar();
+  };
+
+  titleEl.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+    else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+  });
+  titleEl.addEventListener('blur', () => finish(true), { once: true });
+}
+
+function switchSession(id) {
+  Sessions.setActive(id);
+  document.getElementById('messages').innerHTML = '';
+  hideWelcome();
+  restoreChatMessages();
+  if (loadHistory().length === 0) showWelcome();
+  renderSidebar();
+  document.getElementById('input').focus();
 }
 
 // --- Startup: replay prior session into the DOM --------------------------
