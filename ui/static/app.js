@@ -11,6 +11,20 @@ function saveHistory(messages) {
   sessionStorage.setItem(HISTORY_KEY, JSON.stringify(messages));
 }
 
+// Welcome block lives in a <template> so we can restore it on "New session"
+// without keeping a hidden DOM node around between fresh starts.
+function showWelcome() {
+  if (document.getElementById('welcome')) return; // already shown
+  const tpl = document.getElementById('welcome-template');
+  const node = tpl.content.firstElementChild.cloneNode(true);
+  const chatPanel = document.getElementById('chat-panel');
+  chatPanel.insertBefore(node, document.getElementById('messages'));
+}
+
+function hideWelcome() {
+  document.getElementById('welcome')?.remove();
+}
+
 // Auto-grow textarea up to 4 lines
 document.getElementById('input').addEventListener('input', function () {
   this.style.height = 'auto';
@@ -75,7 +89,7 @@ async function sendMessage() {
   const text = input.value.trim();
   if (!text) return;
 
-  document.getElementById('welcome')?.remove();
+  hideWelcome();
 
   const sendBtn = document.getElementById('send-btn');
   input.value = '';
@@ -208,8 +222,19 @@ function restoreChatMessages() {
 // Drop the orphaned tab-state key from older versions; harmless if absent.
 sessionStorage.removeItem('iam_chat_tabs');
 
-if (loadHistory().length > 0) {
-  document.getElementById('welcome')?.remove();
+// "New session" button: clear history and DOM, restore welcome.
+document.getElementById('new-session-btn').addEventListener('click', () => {
+  sessionStorage.removeItem(HISTORY_KEY);
+  document.getElementById('messages').innerHTML = '';
+  const input = document.getElementById('input');
+  input.value = '';
+  input.style.height = 'auto';
+  showWelcome();
+  input.focus();
+});
+
+if (loadHistory().length === 0) {
+  showWelcome();
 }
 
 restoreChatMessages();

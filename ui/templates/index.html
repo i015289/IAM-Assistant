@@ -13,6 +13,7 @@
 <header id="header">
   <span class="logo">⚡ IAM Assistant</span>
   <div class="header-right">
+    <button id="new-session-btn" type="button" title="Clear conversation and start fresh">+ New session</button>
     <span id="mcp-indicator" class="indicator {{ 'connected' if mcp_status == 'connected' else 'disconnected' }}">
       ● ER6 {{ mcp_status }}
     </span>
@@ -21,19 +22,23 @@
   </div>
 </header>
 
+<!-- Welcome content (cloned at startup-when-empty and on New session). -->
+<template id="welcome-template">
+  <div id="welcome" class="welcome">
+    <h2>IAM Assistant</h2>
+    <p>Ask a question to get started. Examples:</p>
+    <ul>
+      <li>Show BRT coverage for SAP_BR_TREASURY_SPECIALIST_FOE</li>
+      <li>Run a SoD scan on the Treasury FOE catalogs</li>
+      <li>Check restriction type coverage for SAP_FIN_BC_TRM_TMPL_PC</li>
+    </ul>
+  </div>
+</template>
+
 <div id="layout">
 
   <!-- Chat panel (full viewport) -->
   <div id="chat-panel">
-    <div id="welcome" class="welcome">
-      <h2>IAM Assistant</h2>
-      <p>Ask a question to get started. Examples:</p>
-      <ul>
-        <li>Show BRT coverage for SAP_BR_TREASURY_SPECIALIST_FOE</li>
-        <li>Run a SoD scan on the Treasury FOE catalogs</li>
-        <li>Check restriction type coverage for SAP_FIN_BC_TRM_TMPL_PC</li>
-      </ul>
-    </div>
     <div id="messages"></div>
     <div id="input-bar">
       <textarea
