@@ -1,14 +1,91 @@
-// Conversation history is persisted in sessionStorage so a refresh inside
-// the same browser tab keeps the prior conversation visible.
-const HISTORY_KEY = 'iam_chat_history';
+// Sessions are stored in localStorage so they survive browser restart.
+//   iam_sessions       → JSON array of {id, title, createdAt, updatedAt}
+//   iam_session:<id>   → JSON array of {role, content}
+// The active session id lives in sessionStorage (per-tab).
+const SESSIONS_KEY = 'iam_sessions';
+const ACTIVE_SESSION_KEY = 'iam_active_session';
+const sessionDataKey = (id) => `iam_session:${id}`;
 
+const Sessions = {
+  list() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]');
+      // Newest first by updatedAt (then createdAt as tiebreaker).
+      return raw.slice().sort((a, b) =>
+        (b.updatedAt || b.createdAt || 0) - (a.updatedAt || a.createdAt || 0));
+    } catch { return []; }
+  },
+
+  _writeList(list) {
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(list));
+  },
+
+  getMessages(id) {
+    try { return JSON.parse(localStorage.getItem(sessionDataKey(id)) || '[]'); }
+    catch { return []; }
+  },
+
+  saveMessages(id, messages, { now = Date.now() } = {}) {
+    localStorage.setItem(sessionDataKey(id), JSON.stringify(messages));
+    const list = Sessions.list();
+    const idx = list.findIndex(s => s.id === id);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], updatedAt: now };
+      Sessions._writeList(list);
+    }
+  },
+
+  create({ title = 'New session', now = Date.now() } = {}) {
+    const id = crypto.randomUUID().slice(0, 8);
+    const list = Sessions.list();
+    list.push({ id, title, createdAt: now, updatedAt: now });
+    Sessions._writeList(list);
+    return id;
+  },
+
+  setTitle(id, title) {
+    const list = Sessions.list();
+    const idx = list.findIndex(s => s.id === id);
+    if (idx < 0) return;
+    list[idx] = { ...list[idx], title };
+    Sessions._writeList(list);
+  },
+
+  delete(id) {
+    const list = Sessions.list().filter(s => s.id !== id);
+    Sessions._writeList(list);
+    localStorage.removeItem(sessionDataKey(id));
+    return list[0]?.id ?? null;
+  },
+
+  getActive() {
+    let id = sessionStorage.getItem(ACTIVE_SESSION_KEY);
+    const list = Sessions.list();
+    if (id && list.some(s => s.id === id)) return id;
+    if (list.length > 0) {
+      sessionStorage.setItem(ACTIVE_SESSION_KEY, list[0].id);
+      return list[0].id;
+    }
+    // No sessions exist yet — create one.
+    id = Sessions.create();
+    sessionStorage.setItem(ACTIVE_SESSION_KEY, id);
+    return id;
+  },
+
+  setActive(id) {
+    sessionStorage.setItem(ACTIVE_SESSION_KEY, id);
+  },
+};
+
+// loadHistory / saveHistory remain shims over the active session for now.
+// They're rewired to Sessions in Task 4.
 function loadHistory() {
-  try { return JSON.parse(sessionStorage.getItem(HISTORY_KEY) || '[]'); }
+  try { return JSON.parse(sessionStorage.getItem('iam_chat_history') || '[]'); }
   catch { return []; }
 }
 
 function saveHistory(messages) {
-  sessionStorage.setItem(HISTORY_KEY, JSON.stringify(messages));
+  sessionStorage.setItem('iam_chat_history', JSON.stringify(messages));
 }
 
 // Welcome block lives in a <template> so we can restore it on "New session"
