@@ -38,6 +38,16 @@ Create `ui/static/prompt-templates.js` with this content:
 // Loaded as a plain <script> before app.js — exposes window.PROMPT_TEMPLATES.
 
 window.PROMPT_TEMPLATES = [
+  // Getting Started — onboarding questions, no placeholders. Click → send-ready.
+  { category: 'Getting Started', title: 'What can I ask?',
+    prompt: 'What kinds of IAM questions can you help me with? Give me a short overview of your capabilities and the data you can query.' },
+  { category: 'Getting Started', title: 'Glossary: BRT, BC, App',
+    prompt: 'Explain the IAM concepts I will encounter most often: Business Role Template (BRT), Business Catalog, IAM App, Restriction Type. Use plain language.' },
+  { category: 'Getting Started', title: 'What is SoD?',
+    prompt: 'Explain Segregation of Duties (SoD) in this IAM system: what it means, why it matters, and how it shows up in catalogs and authorization objects.' },
+  { category: 'Getting Started', title: 'How do roles work?',
+    prompt: 'Walk me through how a Business Role Template gets composed from Business Catalogs and apps, and how those map to PFCG roles in SAP.' },
+
   // Treasury IAM
   { category: 'Treasury IAM', title: 'FOE/BOE SoD validation',
     prompt: 'For app <APP_ID>, validate whether it is compliant with FOE or BOE SoD rules.' },
@@ -315,11 +325,18 @@ Hard-refresh the browser (Cmd+Shift+R / Ctrl+Shift+R).
 
 Clear site storage, reload. Expected:
 - Welcome block visible.
-- Three category headings: `Treasury IAM`, `Cash Management`, `General` in that order.
+- Four category headings: `Getting Started`, `Treasury IAM`, `Cash Management`, `General` in that order.
 - Multiple card buttons under each heading; cards have a bold title and a 2-line muted subtitle.
 - Cards form a responsive grid (auto-fill, minmax 220px).
 
-- [ ] **Step 3: Click a Treasury card**
+- [ ] **Step 3: Click a Getting Started card**
+
+Click "What can I ask?" (or any Getting Started card). Expected:
+- The input textarea fills with the full question — no `<...>` placeholders.
+- Textarea height grows; input focused; caret at end.
+- No auto-send. The user can press Send to actually run the question.
+
+- [ ] **Step 4: Click a Treasury card**
 
 Click "FOE/BOE SoD validation" (or any Treasury card). Expected:
 - The input textarea fills with the template text including the literal `<APP_ID>` placeholder.
@@ -327,33 +344,33 @@ Click "FOE/BOE SoD validation" (or any Treasury card). Expected:
 - Input is focused; caret at end.
 - No message sent.
 
-- [ ] **Step 4: Edit and send**
+- [ ] **Step 5: Edit and send**
 
 Replace `<APP_ID>` with a real id (e.g. `F1443A_TRAN`), press Send. Expected: query runs normally, welcome disappears.
 
-- [ ] **Step 5: New session**
+- [ ] **Step 6: New session**
 
 Click `+ New` in the sidebar. Expected:
 - Welcome reappears with the template grid.
 - All categories render.
 
-- [ ] **Step 6: Switch to a session with history**
+- [ ] **Step 7: Switch to a session with history**
 
 Click an older session row. Expected: welcome hidden, prior conversation rendered.
 
-- [ ] **Step 7: DevTools checks**
+- [ ] **Step 8: DevTools checks**
 
 Open DevTools console.
 
 Expected:
-- `window.PROMPT_TEMPLATES.length` returns 12.
+- `window.PROMPT_TEMPLATES.length` returns 16.
 - No `ReferenceError`.
 - No CSS warning about unknown properties.
 
-- [ ] **Step 8: Responsive check**
+- [ ] **Step 9: Responsive check**
 
 Narrow the browser window. Expected: cards reflow to fewer columns; nothing overflows the welcome container.
 
-- [ ] **Step 9: Done**
+- [ ] **Step 10: Done**
 
 No commit needed — verification only.

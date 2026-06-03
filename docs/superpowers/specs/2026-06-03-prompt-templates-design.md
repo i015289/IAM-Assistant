@@ -52,6 +52,16 @@ A new file `ui/static/prompt-templates.js` exports a global `PROMPT_TEMPLATES` c
 
 ```js
 window.PROMPT_TEMPLATES = [
+  // Getting Started — onboarding questions, no placeholders. Click → send-ready.
+  { category: 'Getting Started', title: 'What can I ask?',
+    prompt: 'What kinds of IAM questions can you help me with? Give me a short overview of your capabilities and the data you can query.' },
+  { category: 'Getting Started', title: 'Glossary: BRT, BC, App',
+    prompt: 'Explain the IAM concepts I will encounter most often: Business Role Template (BRT), Business Catalog, IAM App, Restriction Type. Use plain language.' },
+  { category: 'Getting Started', title: 'What is SoD?',
+    prompt: 'Explain Segregation of Duties (SoD) in this IAM system: what it means, why it matters, and how it shows up in catalogs and authorization objects.' },
+  { category: 'Getting Started', title: 'How do roles work?',
+    prompt: 'Walk me through how a Business Role Template gets composed from Business Catalogs and apps, and how those map to PFCG roles in SAP.' },
+
   { category: 'Treasury IAM', title: 'FOE/BOE SoD validation',
     prompt: 'For app <APP_ID>, validate whether it is compliant with FOE or BOE SoD rules.' },
   { category: 'Treasury IAM', title: 'Catalog split analysis',
@@ -79,9 +89,9 @@ window.PROMPT_TEMPLATES = [
 ];
 ```
 
-Categories render in the order they first appear in the array — so the array order IS the display order. No alphabetic sort. This keeps Treasury (the most common use case for this team) at the top.
+**Total: 16 templates across 4 categories** (`Getting Started` first, then `Treasury IAM`, `Cash Management`, `General`).
 
-`<APP_ID>`-style placeholders are kept as plain literal text. The user replaces them by hand. We don't introduce a fancy "tab through placeholders" interaction — that's overkill for a 12-template library.
+`Getting Started` cards have **no placeholders** — click sends a ready-to-use question. The other three categories use `<APP_ID>` / `<BRT_ID>` etc. placeholders that the user must fill in before sending.
 
 ## Loading
 
@@ -146,5 +156,5 @@ The card click handler must NOT call `sendMessage` — only set the value.
 4. After first send, welcome disappears; remains hidden across that session.
 5. Switch to a session with prior history → welcome stays hidden.
 6. Switch to a fresh session via `+ New` → welcome with templates re-renders.
-7. DevTools: `window.PROMPT_TEMPLATES.length === 12`. Console clean — no `PROMPT_TEMPLATES is not defined`.
+7. DevTools: `window.PROMPT_TEMPLATES.length === 16`. Console clean — no `PROMPT_TEMPLATES is not defined`.
 8. CSS responsive: at narrow viewport widths, cards stack into fewer columns.
