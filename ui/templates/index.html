@@ -13,7 +13,6 @@
 <header id="header">
   <span class="logo">⚡ IAM Assistant</span>
   <div class="header-right">
-    <button id="new-session-btn" type="button" title="Clear conversation and start fresh">+ New session</button>
     <span id="mcp-indicator" class="indicator {{ 'connected' if mcp_status == 'connected' else 'disconnected' }}">
       ● ER6 {{ mcp_status }}
     </span>
@@ -37,7 +36,13 @@
 
 <div id="layout">
 
-  <!-- Chat panel (full viewport) -->
+  <!-- Left: sessions sidebar -->
+  <aside id="sidebar">
+    <button id="sidebar-new-btn" type="button">+ New</button>
+    <div id="session-list"></div>
+  </aside>
+
+  <!-- Right: chat panel -->
   <div id="chat-panel">
     <div id="messages"></div>
     <div id="input-bar">
