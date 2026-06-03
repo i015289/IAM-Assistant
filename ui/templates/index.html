@@ -23,8 +23,17 @@
 
 <div id="layout">
 
-  <!-- Left: Chat panel -->
+  <!-- Chat panel (full viewport) -->
   <div id="chat-panel">
+    <div id="welcome" class="welcome">
+      <h2>IAM Assistant</h2>
+      <p>Ask a question to get started. Examples:</p>
+      <ul>
+        <li>Show BRT coverage for SAP_BR_TREASURY_SPECIALIST_FOE</li>
+        <li>Run a SoD scan on the Treasury FOE catalogs</li>
+        <li>Check restriction type coverage for SAP_FIN_BC_TRM_TMPL_PC</li>
+      </ul>
+    </div>
     <div id="messages"></div>
     <div id="input-bar">
       <textarea
@@ -33,27 +42,6 @@
         rows="1"
       ></textarea>
       <button id="send-btn" onclick="sendMessage()">Send</button>
-    </div>
-  </div>
-
-  <!-- Right: Results panel -->
-  <div id="results-panel">
-    <div id="tab-bar">
-      <div class="tab active" id="tab-welcome" data-tab="welcome">Welcome</div>
-    </div>
-    <div id="tab-content">
-      <div class="tab-pane active" id="pane-welcome">
-        <div class="welcome">
-          <h2>IAM Assistant</h2>
-          <p>Ask a question in the chat to get started. Results with tables, findings, and analysis will appear here.</p>
-          <p>Examples:</p>
-          <ul>
-            <li>Show BRT coverage for SAP_BR_TREASURY_SPECIALIST_FOE</li>
-            <li>Run a SoD scan on the Treasury FOE catalogs</li>
-            <li>Check restriction type coverage for SAP_FIN_BC_TRM_TMPL_PC</li>
-          </ul>
-        </div>
-      </div>
     </div>
   </div>
 
