@@ -174,7 +174,33 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 #send-btn:disabled { opacity: 0.4; cursor: default; }
 
 
-.welcome { max-width: 480px; }
+.welcome { max-width: 720px; }
 .welcome h2 { font-size: 18px; margin-bottom: 12px; }
 .welcome p,.welcome li { color: var(--muted); line-height: 1.7; }
 .welcome ul { padding-left: 20px; margin-top: 8px; }
+.welcome-category-heading {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+  color: var(--muted); font-weight: 600;
+  margin: 16px 0 8px;
+}
+.welcome-category-heading:first-child { margin-top: 8px; }
+.welcome-cards {
+  display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.welcome-card {
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; text-align: left;
+  cursor: pointer; font-family: inherit;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.welcome-card:hover { border-color: var(--accent); }
+.welcome-card .card-title {
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+.welcome-card .card-subtitle {
+  font-size: 11.5px; color: var(--muted); line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
