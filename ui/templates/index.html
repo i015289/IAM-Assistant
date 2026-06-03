@@ -21,16 +21,13 @@
   </div>
 </header>
 
-<!-- Welcome content (cloned at startup-when-empty and on New session). -->
+<!-- Welcome content (cloned at startup-when-empty and on New session).
+     #welcome-templates is filled at clone time by populateWelcomeTemplates(). -->
 <template id="welcome-template">
   <div id="welcome" class="welcome">
     <h2>IAM Assistant</h2>
-    <p>Ask a question to get started. Examples:</p>
-    <ul>
-      <li>Show BRT coverage for SAP_BR_TREASURY_SPECIALIST_FOE</li>
-      <li>Run a SoD scan on the Treasury FOE catalogs</li>
-      <li>Check restriction type coverage for SAP_FIN_BC_TRM_TMPL_PC</li>
-    </ul>
+    <p>Pick a template to start, or type your own question.</p>
+    <div id="welcome-templates"></div>
   </div>
 </template>
 
@@ -57,6 +54,7 @@
 
 </div>
 
+<script src="/static/prompt-templates.js"></script>
 <script src="/static/app.js"></script>
 </body>
 </html>
