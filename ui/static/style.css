@@ -41,10 +41,13 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 
 /* Chat panel */
 #chat-panel {
-  width: 50%;
-  border-right: 1px solid var(--border);
+  width: 100%;
   display: flex; flex-direction: column;
   background: var(--bg);
+}
+#welcome {
+  padding: 24px 20px 8px;
+  border-bottom: 1px solid var(--border);
 }
 #messages {
   flex: 1; overflow-y: auto; padding: 16px;
@@ -123,50 +126,6 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 #send-btn:disabled { opacity: 0.4; cursor: default; }
 
-/* Results panel */
-#results-panel {
-  flex: 1; background: var(--surface);
-  display: flex; flex-direction: column; overflow: hidden;
-}
-#tab-bar {
-  display: flex; border-bottom: 1px solid var(--border);
-  background: var(--bg); overflow-x: auto; flex-shrink: 0;
-}
-.tab {
-  padding: 8px 16px; font-size: 12px; color: var(--muted);
-  cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent;
-  user-select: none;
-}
-.tab.active { color: var(--text); border-bottom-color: var(--accent); background: var(--surface); }
-.tab:hover:not(.active) { color: var(--text); }
-#tab-content { flex: 1; overflow: hidden; position: relative; }
-.tab-pane { display: none; height: 100%; overflow-y: auto; padding: 20px; }
-.tab-pane.active { display: block; }
-
-/* Markdown rendered content */
-.tab-pane h1,.tab-pane h2 { color: var(--text); margin: 0 0 12px; font-size: 15px; }
-.tab-pane h3 { color: var(--accent); font-size: 13px; margin: 16px 0 8px; }
-.tab-pane p { margin: 0 0 10px; line-height: 1.6; color: var(--text); }
-.tab-pane ul,.tab-pane ol { padding-left: 20px; margin: 0 0 10px; }
-.tab-pane li { margin: 4px 0; line-height: 1.6; }
-.tab-pane code { background: var(--border); padding: 2px 5px; border-radius: 3px; font-size: 12px; }
-.tab-pane pre { background: var(--border); padding: 12px; border-radius: 6px; overflow-x: auto; margin: 0 0 12px; }
-.tab-pane pre code { background: none; padding: 0; }
-
-/* Tables */
-.tab-pane table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 0 0 16px; }
-.tab-pane th { text-align: left; padding: 6px 8px; color: var(--accent); font-weight: 600; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
-.tab-pane th:hover { color: var(--text); }
-.tab-pane td { padding: 6px 8px; border-bottom: 1px solid var(--bg); }
-.tab-pane tr:hover td { background: var(--bg); }
-
-/* Warning callout — blockquotes starting with ⚠ */
-.tab-pane blockquote {
-  border-left: 3px solid var(--amber);
-  background: var(--bg); margin: 0 0 12px;
-  padding: 10px 14px; border-radius: 0 6px 6px 0;
-}
-.tab-pane blockquote p { color: var(--amber); margin: 0; font-size: 12px; }
 
 .welcome { max-width: 480px; }
 .welcome h2 { font-size: 18px; margin-bottom: 12px; }
