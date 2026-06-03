@@ -152,6 +152,35 @@ function populateWelcomeTemplates(container) {
   if (!container) return;
   container.innerHTML = '';
 
+  // Search input above the cards.
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'welcome-search-wrap';
+  const searchEl = document.createElement('input');
+  searchEl.className = 'welcome-search';
+  searchEl.type = 'text';
+  searchEl.placeholder = 'Filter templates…';
+  searchEl.autocomplete = 'off';
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'welcome-search-clear';
+  clearBtn.type = 'button';
+  clearBtn.title = 'Clear';
+  clearBtn.textContent = '×';
+  clearBtn.hidden = true;
+  searchWrap.appendChild(searchEl);
+  searchWrap.appendChild(clearBtn);
+  container.appendChild(searchWrap);
+
+  searchEl.addEventListener('input', () => {
+    clearBtn.hidden = searchEl.value === '';
+    applyTemplateFilter(container, searchEl.value);
+  });
+  clearBtn.addEventListener('click', () => {
+    searchEl.value = '';
+    clearBtn.hidden = true;
+    applyTemplateFilter(container, '');
+    searchEl.focus();
+  });
+
   // Built-in templates first.
   const seenCategories = new Map(); // category -> .welcome-cards element
   if (Array.isArray(window.PROMPT_TEMPLATES)) {
@@ -167,6 +196,38 @@ function populateWelcomeTemplates(container) {
     customCards.appendChild(makeCustomCard(t, container));
   }
   customCards.appendChild(makeAddCard(container));
+}
+
+function applyTemplateFilter(container, rawQuery) {
+  const q = (rawQuery || '').trim().toLowerCase();
+  // For each .welcome-cards group, hide non-matching cards. Hide a heading
+  // if its group ends up with zero visible cards (excluding the Add card,
+  // which stays visible regardless).
+  const groups = container.querySelectorAll('.welcome-cards');
+  for (const group of groups) {
+    let visibleNonAdd = 0;
+    for (const card of group.children) {
+      if (card.classList.contains('add-card')) {
+        card.style.display = '';
+        continue;
+      }
+      const text = card.textContent.toLowerCase();
+      const match = !q || text.includes(q);
+      card.style.display = match ? '' : 'none';
+      if (match) visibleNonAdd++;
+    }
+    // Toggle the heading immediately preceding this group.
+    const heading = group.previousElementSibling;
+    if (heading && heading.classList.contains('welcome-category-heading')) {
+      // Custom group ALWAYS visible (the Add card lives there, even when
+      // there are zero matching custom templates). Other groups hide
+      // entirely when no match.
+      const isCustom = heading.textContent === 'Custom';
+      const shouldShow = isCustom || visibleNonAdd > 0 || !q;
+      heading.style.display = shouldShow ? '' : 'none';
+      group.style.display = shouldShow ? '' : 'none';
+    }
+  }
 }
 
 function ensureCategory(container, seenCategories, category) {
