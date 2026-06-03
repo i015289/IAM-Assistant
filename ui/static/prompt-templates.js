@@ -38,7 +38,7 @@ window.PROMPT_TEMPLATES = [
   { category: 'General', title: 'App → Catalog mapping',
     prompt: 'List all catalogs that include app <APP_ID>.' },
   { category: 'General', title: 'Restriction type coverage',
-    prompt: 'Check restriction type coverage for SAP_FIN_BC_TRM_TMPL_PC.' },
+    prompt: 'Check restriction type coverage for <BC_ID>.' },
   { category: 'General', title: 'BRT catalog tree',
     prompt: 'Show the full catalog tree for Business Role Template <BRT_ID>.' },
   { category: 'General', title: 'Auth object usage',
