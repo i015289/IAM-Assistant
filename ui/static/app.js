@@ -77,15 +77,13 @@ const Sessions = {
   },
 };
 
-// loadHistory / saveHistory remain shims over the active session for now.
-// They're rewired to Sessions in Task 4.
+// loadHistory / saveHistory operate on the active session.
 function loadHistory() {
-  try { return JSON.parse(sessionStorage.getItem('iam_chat_history') || '[]'); }
-  catch { return []; }
+  return Sessions.getMessages(Sessions.getActive());
 }
 
 function saveHistory(messages) {
-  sessionStorage.setItem('iam_chat_history', JSON.stringify(messages));
+  Sessions.saveMessages(Sessions.getActive(), messages);
 }
 
 // Welcome block lives in a <template> so we can restore it on "New session"
@@ -296,22 +294,38 @@ function restoreChatMessages() {
   scrollToBottom();
 }
 
-// Drop the orphaned tab-state key from older versions; harmless if absent.
+// Drop orphaned keys from older versions; harmless if absent.
 sessionStorage.removeItem('iam_chat_tabs');
 
-// "New session" button: clear history and DOM, restore welcome.
-document.getElementById('new-session-btn').addEventListener('click', () => {
-  sessionStorage.removeItem(HISTORY_KEY);
-  document.getElementById('messages').innerHTML = '';
-  const input = document.getElementById('input');
-  input.value = '';
-  input.style.height = 'auto';
-  showWelcome();
-  input.focus();
+// One-shot migration: hoist any pre-feature in-flight conversation
+// (sessionStorage-only) into a real session, then clear the legacy key.
+function migrateLegacyHistory() {
+  if (localStorage.getItem(SESSIONS_KEY)) return; // already migrated or fresh install
+  let legacy;
+  try { legacy = JSON.parse(sessionStorage.getItem('iam_chat_history') || '[]'); }
+  catch { legacy = []; }
+  if (legacy.length === 0) return;
+  const firstUser = legacy.find(m => m.role === 'user');
+  const title = firstUser
+    ? firstUser.content.trim().slice(0, 40) || 'Imported session'
+    : 'Imported session';
+  const id = Sessions.create({ title });
+  Sessions.saveMessages(id, legacy);
+  Sessions.setActive(id);
+}
+
+migrateLegacyHistory();
+sessionStorage.removeItem('iam_chat_history');
+
+// Sidebar `+ New` button: create a fresh session and switch to it.
+document.getElementById('sidebar-new-btn').addEventListener('click', () => {
+  const id = Sessions.create();
+  switchSession(id);
 });
 
 if (loadHistory().length === 0) {
   showWelcome();
 }
 
+renderSidebar();
 restoreChatMessages();
