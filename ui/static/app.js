@@ -96,6 +96,48 @@ function showWelcome() {
   const node = tpl.content.firstElementChild.cloneNode(true);
   const chatPanel = document.getElementById('chat-panel');
   chatPanel.insertBefore(node, document.getElementById('messages'));
+  populateWelcomeTemplates(node.querySelector('#welcome-templates'));
+}
+
+function populateWelcomeTemplates(container) {
+  if (!container || !Array.isArray(window.PROMPT_TEMPLATES)) return;
+  const seenCategories = new Map(); // category -> .welcome-cards element
+  for (const t of window.PROMPT_TEMPLATES) {
+    let cards = seenCategories.get(t.category);
+    if (!cards) {
+      const heading = document.createElement('div');
+      heading.className = 'welcome-category-heading';
+      heading.textContent = t.category;
+      container.appendChild(heading);
+      cards = document.createElement('div');
+      cards.className = 'welcome-cards';
+      container.appendChild(cards);
+      seenCategories.set(t.category, cards);
+    }
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'welcome-card';
+    const title = document.createElement('div');
+    title.className = 'card-title';
+    title.textContent = t.title;
+    const sub = document.createElement('div');
+    sub.className = 'card-subtitle';
+    sub.textContent = t.prompt;
+    card.appendChild(title);
+    card.appendChild(sub);
+    card.addEventListener('click', () => fillInputFromTemplate(t.prompt));
+    cards.appendChild(card);
+  }
+}
+
+function fillInputFromTemplate(prompt) {
+  const input = document.getElementById('input');
+  input.value = prompt;
+  // Trigger the existing autosize handler (registered with addEventListener('input', ...)).
+  input.dispatchEvent(new Event('input'));
+  input.focus();
+  // Move caret to the end so the user can edit immediately.
+  input.setSelectionRange(prompt.length, prompt.length);
 }
 
 function hideWelcome() {
