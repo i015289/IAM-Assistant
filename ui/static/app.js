@@ -544,8 +544,22 @@ function relativeTime(ts) {
 function renderSidebar() {
   const list = document.getElementById('session-list');
   const activeId = Sessions.getActive();
-  const sessions = Sessions.list();
+  const searchEl = document.getElementById('sidebar-search');
+  const query = (searchEl?.value || '').trim().toLowerCase();
+  const allSessions = Sessions.list();
+  const sessions = query
+    ? allSessions.filter(s => s.title.toLowerCase().includes(query))
+    : allSessions;
   list.innerHTML = '';
+
+  if (sessions.length === 0 && query) {
+    const empty = document.createElement('div');
+    empty.className = 'sidebar-empty';
+    empty.textContent = `No sessions match "${query}"`;
+    list.appendChild(empty);
+    return;
+  }
+
   for (const s of sessions) {
     const row = document.createElement('div');
     row.className = 'session-row' + (s.id === activeId ? ' active' : '');
@@ -710,6 +724,22 @@ document.getElementById('sidebar-new-btn').addEventListener('click', () => {
   const id = Sessions.create();
   switchSession(id);
 });
+
+// Sidebar search input — filter the session list live.
+{
+  const searchEl = document.getElementById('sidebar-search');
+  const clearBtn = document.getElementById('sidebar-search-clear');
+  searchEl.addEventListener('input', () => {
+    clearBtn.hidden = searchEl.value === '';
+    renderSidebar();
+  });
+  clearBtn.addEventListener('click', () => {
+    searchEl.value = '';
+    clearBtn.hidden = true;
+    renderSidebar();
+    searchEl.focus();
+  });
+}
 
 if (loadHistory().length === 0) {
   showWelcome();
