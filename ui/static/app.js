@@ -454,9 +454,29 @@ function enableSortableTable(table) {
   });
 }
 
+function enableCopyButtons(pane) {
+  pane.querySelectorAll('pre').forEach(pre => {
+    if (pre.querySelector('.copy-btn')) return; // already injected
+    const btn = document.createElement('button');
+    btn.className = 'copy-btn';
+    btn.textContent = 'Copy';
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const text = pre.querySelector('code')?.innerText ?? pre.innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+        btn.textContent = 'Copied ✓';
+        setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+      } catch { /* clipboard unavailable — silent no-op */ }
+    });
+    pre.appendChild(btn);
+  });
+}
+
 function renderMarkdown(pane, raw) {
   pane.innerHTML = DOMPurify.sanitize(marked.parse(raw));
   pane.querySelectorAll('table').forEach(enableSortableTable);
+  enableCopyButtons(pane);
 }
 
 async function sendMessage() {
