@@ -26,13 +26,15 @@ const Sessions = {
   },
 
   saveMessages(id, messages, { now = Date.now() } = {}) {
-    localStorage.setItem(sessionDataKey(id), JSON.stringify(messages));
     const list = Sessions.list();
     const idx = list.findIndex(s => s.id === id);
-    if (idx >= 0) {
-      list[idx] = { ...list[idx], updatedAt: now };
-      Sessions._writeList(list);
+    if (idx < 0) {
+      // Session was deleted in another tab; do not write an orphaned data blob.
+      return;
     }
+    localStorage.setItem(sessionDataKey(id), JSON.stringify(messages));
+    list[idx] = { ...list[idx], updatedAt: now };
+    Sessions._writeList(list);
   },
 
   create({ title = 'New session', now = Date.now() } = {}) {
@@ -175,13 +177,13 @@ async function sendMessage() {
   appendUserMessage(text);
 
   const history = loadHistory();
+  const isFirstUserMessage = history.every(m => m.role !== 'user');
   history.push({ role: 'user', content: text });
   saveHistory(history);
 
-  // Auto-title an untouched session from the first user message.
-  const activeId = Sessions.getActive();
-  const meta = Sessions.list().find(s => s.id === activeId);
-  if (meta && meta.title === 'New session') {
+  // Auto-title from the first user message of the session.
+  if (isFirstUserMessage) {
+    const activeId = Sessions.getActive();
     const t = text.trim();
     const newTitle = t.length > 40 ? t.slice(0, 40) + '…' : t;
     Sessions.setTitle(activeId, newTitle || 'New session');
@@ -289,8 +291,9 @@ function relativeTime(ts) {
 function renderSidebar() {
   const list = document.getElementById('session-list');
   const activeId = Sessions.getActive();
+  const sessions = Sessions.list();
   list.innerHTML = '';
-  for (const s of Sessions.list()) {
+  for (const s of sessions) {
     const row = document.createElement('div');
     row.className = 'session-row' + (s.id === activeId ? ' active' : '');
     row.dataset.id = s.id;
@@ -386,11 +389,14 @@ function beginRename(titleEl, id, originalTitle) {
 function switchSession(id) {
   Sessions.setActive(id);
   document.getElementById('messages').innerHTML = '';
+  const input = document.getElementById('input');
+  input.value = '';
+  input.style.height = 'auto';
   hideWelcome();
   restoreChatMessages();
   if (loadHistory().length === 0) showWelcome();
   renderSidebar();
-  document.getElementById('input').focus();
+  input.focus();
 }
 
 // --- Startup: replay prior session into the DOM --------------------------
@@ -441,10 +447,10 @@ function migrateLegacyHistory() {
   const id = Sessions.create({ title });
   Sessions.saveMessages(id, legacy);
   Sessions.setActive(id);
+  sessionStorage.removeItem('iam_chat_history');
 }
 
 migrateLegacyHistory();
-sessionStorage.removeItem('iam_chat_history');
 
 // Sidebar `+ New` button: create a fresh session and switch to it.
 document.getElementById('sidebar-new-btn').addEventListener('click', () => {
