@@ -6,7 +6,7 @@ A Claude Code–powered assistant for analyzing SAP IAM (Identity & Access Manag
 
 This project provides two modes for running natural-language IAM investigations against live ER6 data:
 
-- **Claude Code** — interactive CLI with domain skills for Treasury IAM and Cash Management IAM, a goal-driven autonomous agent (`/goal` + `/execute`), and a persistent memo system (`/memo`) for saving findings across sessions.
+- **Claude Code** — interactive CLI with domain skills for Treasury IAM, Cash Management IAM, and Finance IAM (AP/AR/GL/BA), a goal-driven autonomous agent (`/goal` + `/execute`), and a persistent memo system (`/memo`) for saving findings across sessions.
 - **Web UI** — a FastAPI application with a browser-based chat interface, Anthropic streaming, MCP tool execution, and OIDC authentication.
 
 ## Benefits
@@ -102,6 +102,7 @@ Skills can be activated in two ways:
 ```
 /treasury-iam   → Treasury IAM specialist (FOE/BOE SoD, T_DEAL_*, T_TOE_HR)
 /cash-iam       → Cash Management IAM specialist (F_CLM_*, four-eyes principle)
+/fin-iam        → Finance IAM specialist (AP / AR / GL / BA — F_BKPF_*, F_LFA1_*, F_KNA1_*)
 /goal           → Decompose a high-level objective into a step-by-step plan
 /execute        → Autonomously execute a plan against ER6
 /memo           → Save, load, or manage persistent investigation memos
@@ -111,8 +112,9 @@ Skills can be activated in two ways:
 
 | Skill | Auto-triggers on |
 |-------|-----------------|
-| `/treasury-iam` | "Treasury", "FOE", "BOE", "T_DEAL_*", "T_TOE_HR", "CLOUD_FI_TR_IAM", "hedge request", "Front/Back Office" |
+| `/treasury-iam` | "Treasury", "FOE", "BOE", "MOE", "T_DEAL_*", "T_TOE_HR", "CLOUD_FI_TR_IAM", "hedge request", "Front/Back Office", "TRFCT", "limit check", "whole-BRT audit", "country variant" |
 | `/cash-iam` | "Cash Management", "bank account", "F_CLM_BAM/BAI/BAIC/BAOR", "four-eyes", "submit/approve", "SAP_FIN_BC_CM_*" |
+| `/fin-iam` | "AP", "AR", "GL", "Bank Accounting", "Accounts Payable/Receivable", "F_BKPF_*", "F_LFA1_*", "F_KNA1_*", "journal entry", "dunning", "payment run" |
 | `/goal` | High-level objective phrasing: "validate all...", "analyze...", "I want to..." |
 | `/execute` | "run the plan", "execute autonomously", direct objective with clear scope |
 | `/memo` | "save memo", "remember this", "load memo", "what did we find", "resume", "show memos" |
@@ -132,6 +134,11 @@ Activates the Treasury IAM specialist mode. Use this for:
 - Checking forbidden TRFCT × ACTVT combinations on auth objects `T_DEAL_PD`, `T_DEAL_PF`, `T_DEAL_DP`, `T_DEAL_AG`
 - Planning catalog splits when SoD violations are found
 - Validating hedge request management SoD rules on auth object `T_TOE_HR` (MOE vs Accountant)
+- Auditing indirect SoD risks: `T_DEAL_LC` (limit override), `T_BP_DEAL` (counterparty binding), `T_HREL_AUT` (hedge relationship self-designation)
+- Running whole-BRT audits, cross-company-code violation scans, and pre/post-migration diffs
+- Identifying 30+ auth objects by SoD relevance (primary / indirect / none)
+
+The skill encodes full business context (FOE/BOE/MOE responsibilities, why SoD matters in Treasury, country variant rules), structured workflows, troubleshooting tips, and a live ER6 appendix of observed auth objects and BRT catalog inventory.
 
 **Example prompts:**
 ```
@@ -147,13 +154,17 @@ For catalog SAP_TC_FIN_TRM_COMMON, check whether any apps violate FOE or BOE for
 /treasury-iam
 For app FTR_FX_F_TRAN, determine whether it belongs in a FOE or BOE catalog.
 
-# BRT footprint
+# Whole-BRT audit
 /treasury-iam
-For BRT SAP_BR_TREASURY_SPECIALIST_FOE, show the full catalog and app footprint.
+For BRT SAP_BR_TREASURY_SPECIALIST_FOE, audit all catalogs and apps for SoD violations.
 
 # Hedge SoD (T_TOE_HR)
 /treasury-iam
 For catalog SAP_FIN_BC_HEDGE_MGT_PC, validate T_TOE_HR values against MOE forbidden combinations.
+
+# Indirect SoD — limit override check
+/treasury-iam
+For app <APP_ID>, check whether T_DEAL_LC override activity is held alongside T_DEAL_PD D2+01.
 ```
 
 ### `/cash-iam`
@@ -187,6 +198,34 @@ For BRT SAP_BR_CASH_MANAGER, identify whether any access combination violates th
 # Submit/approve segregation — single app
 /cash-iam
 For IAM App ID F5859_TRAN, analyze whether submit and approve capabilities are properly segregated.
+```
+
+### `/fin-iam`
+
+Activates the Finance IAM specialist mode. Use this for:
+
+- Analyzing app authorizations in AP (`CLOUD_FI_AP_IAM`), AR (`CLOUD_FI_AR_IAM`), GL (`CLOUD_FI_GL_IAM`), and BA (`CLOUD_FI_BA_IAM`) packages
+- Checking core FI auth objects: `F_BKPF_BUK`, `F_BKPF_BLA`, `F_BKPF_KOA` (document posting), `F_LFA1_BUK` (vendor master), `F_KNA1_BUK` (customer master)
+- Validating SoD between AP invoice creation and payment approval (four-eyes)
+- Tracing authorization setup across AP payment run, AR clearing, and GL journal entry flows
+
+**Example prompts:**
+```
+# AP payment flow SoD
+/fin-iam
+For the AP payment run flow (F0770_TRAN → F0771_TRAN → F0673A_TRAN), trace auth objects and confirm SoD between proposal, revision, and approval.
+
+# GL posting controls
+/fin-iam
+For the GL journal entry flow (post / park / verify), trace auth objects F_BKPF_BUK, F_BKPF_BLA, F_BKPF_KOA and confirm posting controls.
+
+# App auth analysis
+/fin-iam
+For IAM App ID <APP_ID>, show all active authorization object instances and their field values.
+
+# AR dunning SoD
+/fin-iam
+For AR, verify that dunning and incoming payment posting are not both held by a single role without oversight.
 ```
 
 ### `/goal`
@@ -546,7 +585,7 @@ OIDC_CLIENT_ID=your-client-id
 OIDC_CLIENT_SECRET=your-client-secret
 OIDC_DISCOVERY_URL=https://your-idp/.well-known/openid-configuration
 SESSION_SECRET=a-long-random-string
-BASE_URL=http://localhost:8000
+BASE_URL=http://localhost:8080
 ```
 
 **Dev mode:** Set `OIDC_CLIENT_ID=your-client-id` (the placeholder default) to skip OIDC and auto-log in as `dev`.
@@ -561,7 +600,22 @@ conda run -n sapcli-env pip install -r app/requirements.txt
 conda run -n sapcli-env uvicorn app.main:app --reload
 ```
 
-Then open `http://localhost:8000` in your browser.
+Then open `http://localhost:8080` in your browser.
+
+### Prompt Templates
+
+The welcome screen displays a categorised library of example prompts (`ui/static/prompt-templates.js`). Categories and their contents:
+
+| Category | Templates |
+|----------|-----------|
+| **Getting Started** | What can I ask?, Glossary: BRT/BC/App, What is SoD?, How do roles work? |
+| **General** | App → Catalog mapping, Restriction type coverage, BRT catalog tree, Auth object usage |
+| **Finance — AP** | App auth analysis, AP payment flow SoD |
+| **Finance — AR** | AR clearing & incoming payment, AR dunning SoD check |
+| **Finance — GL** | GL posting controls, Activity set check |
+| **Finance — BA** | Bank statement health check |
+| **Treasury and Risk Management** | FOE/BOE SoD validation, Catalog split analysis, Hedge request SoD, BRT footprint |
+| **Cash Management** | Activity set completeness, Submit/Approve SoD, Four-eyes catalog check, IAM health check |
 
 ### Tests
 
@@ -604,6 +658,7 @@ iam-assistant/
 ├── skills/                     # Skill source files (mirrored from .claude/skills/ by sync hook)
 │   ├── treasury-iam.md
 │   ├── cash-iam.md
+│   ├── fin-iam.md
 │   ├── goal.md
 │   ├── execute.md
 │   └── memo.md
@@ -619,12 +674,14 @@ iam-assistant/
     ├── skills/
     │   ├── treasury-iam.md     # Treasury IAM skill (FOE/BOE SoD, T_DEAL_*, T_TOE_HR)
     │   ├── cash-iam.md         # Cash Management IAM skill (F_CLM_* auth objects)
+    │   ├── fin-iam.md          # Finance IAM skill (AP/AR/GL/BA — F_BKPF_*, F_LFA1_*, F_KNA1_*)
     │   ├── goal.md             # Goal decomposition skill
     │   ├── execute.md          # Autonomous multi-step execution agent
     │   └── memo.md             # Persistent memo system
     ├── commands/
     │   ├── treasury-iam.md     # /treasury-iam slash command
     │   ├── cash-iam.md         # /cash-iam slash command
+    │   ├── fin-iam.md          # /fin-iam slash command
     │   ├── goal.md             # /goal slash command
     │   ├── execute.md          # /execute slash command
     │   └── memo.md             # /memo slash command
