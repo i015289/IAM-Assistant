@@ -24,14 +24,36 @@ window.PROMPT_TEMPLATES = [
   { category: 'General', title: 'Auth object usage',
     prompt: 'Find all apps that use authorization object <AUTH_OBJECT>.' },
 
+  // Finance — Accounts Payable
+  { category: 'Finance — AP', title: 'App auth analysis',
+    prompt: 'For IAM App ID <APP_ID>, show all active authorization object instances and their field values.' },
+  { category: 'Finance — AP', title: 'AP payment flow SoD',
+    prompt: 'For the AP payment run flow (F0770_TRAN → F0771_TRAN → F0673A_TRAN), trace auth objects and confirm SoD between proposal, revision, and approval.' },
+
+  // Finance — Accounts Receivable
+  { category: 'Finance — AR', title: 'AR clearing & incoming payment',
+    prompt: 'For AR clearing (F0773_TRAN) and incoming payment posting (F1345_TRAN), validate the authorization setup against expected activities.' },
+  { category: 'Finance — AR', title: 'AR dunning SoD check',
+    prompt: 'For AR, verify that dunning and incoming payment posting are not both held by a single role without oversight.' },
+
+  // Finance — General Ledger
+  { category: 'Finance — GL', title: 'GL posting controls',
+    prompt: 'For the GL journal entry flow (post / park / verify), trace auth objects F_BKPF_BUK, F_BKPF_BLA, F_BKPF_KOA and confirm posting controls.' },
+  { category: 'Finance — GL', title: 'Activity set check',
+    prompt: 'For IAM App ID <APP_ID>, verify whether the activity set is aligned with the app\'s intended business purpose.' },
+
+  // Finance — Bank Accounting
+  { category: 'Finance — BA', title: 'Bank statement health check',
+    prompt: 'For the bank statement processing flow, run a full IAM health check including authorization objects, activity sets, catalog assignments, and BRT coverage.' },
+
   // Treasury IAM
-  { category: 'Treasury IAM', title: 'FOE/BOE SoD validation',
+  { category: 'Treasury and Risk Management', title: 'FOE/BOE SoD validation',
     prompt: 'For app <APP_ID>, validate whether it is compliant with FOE or BOE SoD rules.' },
-  { category: 'Treasury IAM', title: 'Catalog split analysis',
+  { category: 'Treasury and Risk Management', title: 'Catalog split analysis',
     prompt: 'Analyze SAP_TC_FIN_TRM_COMMON and propose the FOE/BOE split — which apps go where?' },
-  { category: 'Treasury IAM', title: 'Hedge request SoD',
+  { category: 'Treasury and Risk Management', title: 'Hedge request SoD',
     prompt: 'For app <APP_ID>, validate T_TOE_HR values against MOE and Accountant forbidden combinations.' },
-  { category: 'Treasury IAM', title: 'BRT footprint',
+  { category: 'Treasury and Risk Management', title: 'BRT footprint',
     prompt: 'For Business Role Template <BRT_ID>, show the full catalog and app footprint.' },
 
   // Cash Management
