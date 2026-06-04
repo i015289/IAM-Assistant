@@ -16,6 +16,7 @@
     <span id="mcp-indicator" class="indicator {{ 'connected' if mcp_status == 'connected' else 'disconnected' }}">
       ● ER6 {{ mcp_status }}
     </span>
+    <span class="indicator">Model: {{ llm_model }}</span>
     <span class="username">{{ username }}</span>
     <a href="/auth/logout" class="signout">Sign out</a>
   </div>

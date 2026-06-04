@@ -59,6 +59,7 @@ async def root(request: Request, user: dict = Depends(get_current_user)):
         "index.html",
         username=user["preferred_username"],
         mcp_status="connected" if mcp_alive else "disconnected",
+        llm_model=settings.llm_model,
     )
 
 

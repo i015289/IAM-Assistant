@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     oidc_discovery_url: str
     session_secret: SecretStr
     base_url: str
+    llm_model: str = "claude-opus-4-7"
 
 
 settings = Settings()

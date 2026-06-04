@@ -42,7 +42,7 @@ async def stream_chat(
             input_buffers: dict[int, dict] = {}
 
             async with _CLIENT.messages.stream(
-                model="claude-opus-4-7",
+                model=settings.llm_model,
                 max_tokens=8096,
                 system=_SYSTEM_PROMPT,
                 messages=conversation,
