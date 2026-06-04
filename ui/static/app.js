@@ -289,9 +289,9 @@ function makeCustomCard(t, container) {
   delBtn.className = 'card-action-btn delete';
   delBtn.title = 'Delete template';
   delBtn.textContent = '×';
-  delBtn.addEventListener('click', (e) => {
+  delBtn.addEventListener('click', async (e) => {
     e.stopPropagation();
-    if (!confirm(`Delete template "${t.title}"?`)) return;
+    if (!await confirmDialog(`Delete template "${t.title}"?`)) return;
     UserTemplates.delete(t.id);
     populateWelcomeTemplates(container);
   });
@@ -481,6 +481,40 @@ function renderMarkdown(pane, raw) {
 
 function removeRegenButtons() {
   document.querySelectorAll('.msg-actions').forEach(el => el.remove());
+}
+
+function confirmDialog(message) {
+  return new Promise((resolve) => {
+    const backdrop = document.createElement('div');
+    backdrop.className = 'confirm-backdrop';
+    const box = document.createElement('div');
+    box.className = 'confirm-box';
+    const msg = document.createElement('div');
+    msg.className = 'confirm-msg';
+    msg.textContent = message;
+    const actions = document.createElement('div');
+    actions.className = 'confirm-actions';
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'confirm-cancel';
+    cancelBtn.textContent = 'Cancel';
+    const okBtn = document.createElement('button');
+    okBtn.className = 'confirm-ok';
+    okBtn.textContent = 'Delete';
+    const close = (result) => { backdrop.remove(); resolve(result); };
+    cancelBtn.addEventListener('click', () => close(false));
+    okBtn.addEventListener('click', () => close(true));
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(false); });
+    document.addEventListener('keydown', function handler(e) {
+      if (e.key === 'Escape') { close(false); document.removeEventListener('keydown', handler); }
+    });
+    actions.appendChild(cancelBtn);
+    actions.appendChild(okBtn);
+    box.appendChild(msg);
+    box.appendChild(actions);
+    backdrop.appendChild(box);
+    document.body.appendChild(backdrop);
+    okBtn.focus();
+  });
 }
 
 function attachRegenButton(wrapEl) {
@@ -760,9 +794,9 @@ function renderSidebar() {
     });
 
     // Click × → confirm and delete.
-    del.addEventListener('click', (e) => {
+    del.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (!confirm(`Delete session "${s.title}"?`)) return;
+      if (!await confirmDialog(`Delete session "${s.title}"?`)) return;
       const wasActive = (s.id === Sessions.getActive());
       const nextActive = Sessions.delete(s.id);
       if (wasActive) {

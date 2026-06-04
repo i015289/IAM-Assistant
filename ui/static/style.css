@@ -366,3 +366,39 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
   cursor: pointer;
 }
 .regen-btn:hover { color: var(--text); border-color: var(--text); }
+
+/* Confirm dialog */
+.confirm-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.confirm-box {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 24px 28px;
+  min-width: 280px; max-width: 400px;
+  display: flex; flex-direction: column; gap: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+}
+.confirm-msg {
+  font-size: 14px; color: var(--text); line-height: 1.5;
+}
+.confirm-actions {
+  display: flex; justify-content: flex-end; gap: 8px;
+}
+.confirm-actions button {
+  padding: 6px 16px; border-radius: 6px;
+  font-size: 13px; font-family: inherit; cursor: pointer;
+}
+.confirm-cancel {
+  background: transparent; color: var(--muted);
+  border: 1px solid var(--border);
+}
+.confirm-cancel:hover { color: var(--text); border-color: var(--text); }
+.confirm-ok {
+  background: var(--red); color: var(--bg);
+  border: 1px solid var(--red); font-weight: 600;
+}
+.confirm-ok:hover { opacity: 0.85; }
+
