@@ -59,7 +59,7 @@ CLAUDE.md, skill files, and README are updated as new facts surface — undocume
 install.bat          # Windows (Anaconda Prompt or PowerShell)
 ```
 
-Then edit `.env` and `.sapcli.env` with your real values, and start the server:
+The installer creates `.env` and `.sapcli.env` at Step 2 — edit them with your real values while the install runs, then start the server:
 
 ```bash
 conda run -n sapcli-env uvicorn app.main:app --reload
