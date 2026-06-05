@@ -24,47 +24,17 @@ for /f "delims=" %%I in ('where conda') do (
 )
 :_conda_ok
 
-REM Step 2 — create the sapcli-env conda environment if missing
+REM Step 2 — scaffold .env and .sapcli.env from templates
 echo.
-echo ==^> [2/6] Creating sapcli-env conda environment (if missing)...
-conda env list | findstr /b /c:"sapcli-env " >nul
-if errorlevel 1 (
-  conda create -n sapcli-env python=3.12 -y
-  if errorlevel 1 goto :error
-) else (
-  echo   sapcli-env already exists, skipping.
-)
-
-REM Step 3 — install sapcli
-echo.
-echo ==^> [3/6] Installing sapcli into sapcli-env...
-conda run -n sapcli-env pip install --quiet git+https://github.com/jfilak/sapcli.git
-if errorlevel 1 goto :error
-
-REM Step 4 — install MCP-server requirements
-echo.
-echo ==^> [4/6] Installing MCP server requirements...
-conda run -n sapcli-env pip install --quiet -r mcp-server\requirements.txt
-if errorlevel 1 goto :error
-
-REM Step 5 — install web-app requirements
-echo.
-echo ==^> [5/6] Installing web app requirements...
-conda run -n sapcli-env pip install --quiet -r app\requirements.txt
-if errorlevel 1 goto :error
-
-REM Step 6 — scaffold .env and .sapcli.env from templates
-echo.
-echo ==^> [6/6] Scaffolding .env and .sapcli.env from templates...
+echo ==^> [2/6] Scaffolding .env and .sapcli.env from templates...
 
 if exist .env (
   echo   .env already exists, leaving alone.
 ) else (
   copy /y .env.example .env >nul
   if errorlevel 1 goto :error
-  REM Generate the secret AND rewrite the file in a single python invocation —
-  REM avoids cmd `for /f` quoting hazards entirely.
-  conda run -n sapcli-env python -c "import secrets; p='.env'; sec=secrets.token_hex(32); lines=open(p,encoding='utf-8').readlines(); open(p,'w',encoding='utf-8').writelines((f'SESSION_SECRET={sec}\n' if l.startswith('SESSION_SECRET=') else l) for l in lines)"
+  REM Generate the secret AND rewrite the file in a single python invocation.
+  python -c "import secrets; p='.env'; sec=secrets.token_hex(32); lines=open(p,encoding='utf-8').readlines(); open(p,'w',encoding='utf-8').writelines((f'SESSION_SECRET={sec}\n' if l.startswith('SESSION_SECRET=') else l) for l in lines)"
   if errorlevel 1 goto :error
   echo   .env created from .env.example with a fresh SESSION_SECRET.
 )
@@ -78,11 +48,43 @@ if exist .sapcli.env (
 )
 
 echo.
+echo   Tip: edit .env and .sapcli.env now while the install continues.
+
+REM Step 3 — create the sapcli-env conda environment if missing
+echo.
+echo ==^> [3/6] Creating sapcli-env conda environment (if missing)...
+conda env list | findstr /b /c:"sapcli-env " >nul
+if errorlevel 1 (
+  conda create -n sapcli-env python=3.12 -y
+  if errorlevel 1 goto :error
+) else (
+  echo   sapcli-env already exists, skipping.
+)
+
+REM Step 4 — install sapcli
+echo.
+echo ==^> [4/6] Installing sapcli into sapcli-env...
+conda run -n sapcli-env pip install --quiet git+https://github.com/jfilak/sapcli.git
+if errorlevel 1 goto :error
+
+REM Step 5 — install MCP-server requirements
+echo.
+echo ==^> [5/6] Installing MCP server requirements...
+conda run -n sapcli-env pip install --quiet -r mcp-server\requirements.txt
+if errorlevel 1 goto :error
+
+REM Step 6 — install web-app requirements
+echo.
+echo ==^> [6/6] Installing web app requirements...
+conda run -n sapcli-env pip install --quiet -r app\requirements.txt
+if errorlevel 1 goto :error
+
+echo.
 echo [OK] Install complete.
 echo.
 echo Next steps:
-echo   1. Edit .env           (fill in ANTHROPIC_API_KEY, OIDC_*, BASE_URL).
-echo   2. Edit .sapcli.env    (fill in SAP_ASHOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
+echo   1. If not yet edited: fill in .env        (ANTHROPIC_API_KEY, OIDC_*, BASE_URL).
+echo   2. If not yet edited: fill in .sapcli.env  (SAP_ASHOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
 echo   3. Start the server:
 echo        conda run -n sapcli-env uvicorn app.main:app --reload
 exit /b 0
