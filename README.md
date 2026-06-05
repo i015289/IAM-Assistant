@@ -59,7 +59,7 @@ CLAUDE.md, skill files, and README are updated as new facts surface — undocume
 install.bat          # Windows (Anaconda Prompt or PowerShell)
 ```
 
-The installer creates `.env` and `.sapcli.env` at Step 2 — edit them with your real values while the install runs, then start the server:
+The installer creates `.env` and `.sapcli.env` at Step 2. `.sapcli.env` is pre-filled with the ER6 connection details. For `.env`, set `ANTHROPIC_API_KEY` to your **Hyperspace API key** (`ANTHROPIC_BASE_URL` is already set to `http://localhost:6655`). Then start the server:
 
 ```bash
 conda run -n sapcli-env uvicorn app.main:app --reload
@@ -579,8 +579,8 @@ The `app/` directory contains a standalone web application for browser-based IAM
 Create a `.env` file in the project root:
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_BASE_URL=https://api.anthropic.com   # optional, for Hyperspace proxy
+ANTHROPIC_API_KEY=<your-hyperspace-api-key>   # Hyperspace API key (not the standard Anthropic key)
+ANTHROPIC_BASE_URL=http://localhost:6655
 OIDC_CLIENT_ID=your-client-id
 OIDC_CLIENT_SECRET=your-client-secret
 OIDC_DISCOVERY_URL=https://your-idp/.well-known/openid-configuration

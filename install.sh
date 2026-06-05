@@ -71,7 +71,7 @@ cat <<'EOF'
 ✓ Install complete.
 
 Next steps:
-  1. If not yet edited: fill in .env       (ANTHROPIC_API_KEY, OIDC_*, BASE_URL).
+  1. If not yet edited: fill in .env       (ANTHROPIC_API_KEY = your Hyperspace API key, OIDC_*, BASE_URL).
   2. If not yet edited: fill in .sapcli.env (SAP_ASHOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
   3. Start the server:
        conda run -n sapcli-env uvicorn app.main:app --reload

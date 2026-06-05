@@ -83,7 +83,7 @@ echo.
 echo [OK] Install complete.
 echo.
 echo Next steps:
-echo   1. If not yet edited: fill in .env        (ANTHROPIC_API_KEY, OIDC_*, BASE_URL).
+echo   1. If not yet edited: fill in .env        (ANTHROPIC_API_KEY = your Hyperspace API key, OIDC_*, BASE_URL).
 echo   2. If not yet edited: fill in .sapcli.env  (SAP_ASHOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
 echo   3. Start the server:
 echo        conda run -n sapcli-env uvicorn app.main:app --reload
