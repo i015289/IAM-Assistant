@@ -34,7 +34,7 @@ if exist .env (
   copy /y .env.example .env >nul
   if errorlevel 1 goto :error
   REM Generate the secret AND rewrite the file in a single python invocation.
-  python -c "import secrets; p='.env'; sec=secrets.token_hex(32); lines=open(p,encoding='utf-8').readlines(); open(p,'w',encoding='utf-8').writelines((f'SESSION_SECRET={sec}\n' if l.startswith('SESSION_SECRET=') else l) for l in lines)"
+  conda run -n base python -c "import secrets; p='.env'; sec=secrets.token_hex(32); lines=open(p,encoding='utf-8').readlines(); open(p,'w',encoding='utf-8').writelines((f'SESSION_SECRET={sec}\n' if l.startswith('SESSION_SECRET=') else l) for l in lines)"
   if errorlevel 1 goto :error
   echo   .env created from .env.example with a fresh SESSION_SECRET.
 )
