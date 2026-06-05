@@ -7,7 +7,7 @@ set -euo pipefail
 cd "$(dirname "$0")"
 
 step() {
-  printf '\n==> [%s/7] %s\n' "$1" "$2"
+  printf '\n==> [%s/6] %s\n' "$1" "$2"
 }
 
 # Step 1 — verify conda is available
@@ -30,22 +30,8 @@ if [ -f .env ]; then
   echo "  .env already exists, leaving alone."
 else
   cp .env.example .env
-  secret="$(python3 -c 'import secrets; print(secrets.token_hex(32))')"
-  python_inplace=$(cat <<'PY'
-import sys
-p = sys.argv[1]
-secret = sys.argv[2]
-with open(p) as f:
-    lines = f.readlines()
-with open(p, 'w') as f:
-    for line in lines:
-        if line.startswith('SESSION_SECRET='):
-            f.write(f'SESSION_SECRET={secret}\n')
-        else:
-            f.write(line)
-PY
-)
-  python3 -c "$python_inplace" .env "$secret"
+  secret="$(openssl rand -hex 32)"
+  sed -i.bak "s/^SESSION_SECRET=.*/SESSION_SECRET=${secret}/" .env && rm .env.bak
   echo "  .env created from .env.example with a fresh SESSION_SECRET."
 fi
 
