@@ -7,7 +7,7 @@ cd /d "%~dp0"
 
 REM Step 1 — verify conda is available
 echo.
-echo ==^> [1/6] Checking for conda...
+echo ==^> [1/7] Checking for conda...
 where conda >nul 2>&1
 if errorlevel 1 (
   echo.
@@ -26,7 +26,7 @@ for /f "delims=" %%I in ('where conda') do (
 
 REM Step 2 — scaffold .env and .sapcli.env from templates
 echo.
-echo ==^> [2/6] Scaffolding .env and .sapcli.env from templates...
+echo ==^> [2/7] Scaffolding .env and .sapcli.env from templates...
 
 if exist .env (
   echo   .env already exists, leaving alone.
@@ -76,7 +76,7 @@ echo   Tip: edit .env and .sapcli.env now while the install continues.
 
 REM Step 3 — create the sapcli-env conda environment if missing
 echo.
-echo ==^> [3/6] Creating sapcli-env conda environment (if missing)...
+echo ==^> [3/7] Creating sapcli-env conda environment (if missing)...
 conda env list | findstr /b /c:"sapcli-env " >nul
 if errorlevel 1 (
   conda create -n sapcli-env python=3.12 -y
@@ -87,19 +87,19 @@ if errorlevel 1 (
 
 REM Step 4 — install sapcli
 echo.
-echo ==^> [4/6] Installing sapcli into sapcli-env...
+echo ==^> [4/7] Installing sapcli into sapcli-env...
 conda run -n sapcli-env pip install --quiet git+https://github.com/jfilak/sapcli.git
 if errorlevel 1 goto :error
 
 REM Step 5 — install MCP-server requirements
 echo.
-echo ==^> [5/6] Installing MCP server requirements...
+echo ==^> [5/7] Installing MCP server requirements...
 conda run -n sapcli-env pip install --quiet -r mcp-server\requirements.txt
 if errorlevel 1 goto :error
 
 REM Step 6 — install web-app requirements
 echo.
-echo ==^> [6/6] Installing web app requirements...
+echo ==^> [6/7] Installing web app requirements...
 conda run -n sapcli-env pip install --quiet -r app\requirements.txt
 if errorlevel 1 goto :error
 
@@ -109,7 +109,8 @@ echo.
 echo Next steps:
 echo   1. If not yet edited: fill in .env        (ANTHROPIC_API_KEY = your Hyperspace API key, OIDC_*, BASE_URL).
 echo   2. If not yet edited: fill in .sapcli.env  (SAP_ASHOST, SAP_PORT, SAP_CLIENT, SAP_PASSWORD).
-echo   3. Start the server:
+echo   3. Open a NEW Anaconda Prompt ^(or cmd^) for env var changes ^(PYTHONUTF8, PATH, conda init^) to take effect.
+echo   4. Start the server:
 echo        conda run -n sapcli-env uvicorn app.main:app --reload
 exit /b 0
 
