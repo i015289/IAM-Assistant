@@ -33,8 +33,11 @@ if exist .env (
 ) else (
   copy /y .env.example .env >nul
   if errorlevel 1 goto :error
-  REM Generate the secret AND rewrite the file in a single python invocation.
-  conda run -n base python -c "import secrets; p='.env'; sec=secrets.token_hex(32); lines=open(p,encoding='utf-8').readlines(); open(p,'w',encoding='utf-8').writelines((f'SESSION_SECRET={sec}\n' if l.startswith('SESSION_SECRET=') else l) for l in lines)"
+  REM Generate SESSION_SECRET and rewrite the file via scripts\rewrite_env.py.
+  set "SESSION_SECRET_VAL="
+  for /f "delims=" %%I in ('conda run -n base python -c "import secrets; print(secrets.token_hex(32))"') do set "SESSION_SECRET_VAL=%%I"
+  if not defined SESSION_SECRET_VAL goto :error
+  conda run -n base python scripts\rewrite_env.py .env "SESSION_SECRET=!SESSION_SECRET_VAL!"
   if errorlevel 1 goto :error
   echo   .env created from .env.example with a fresh SESSION_SECRET.
 )
