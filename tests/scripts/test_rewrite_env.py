@@ -6,11 +6,7 @@ from pathlib import Path
 
 import pytest
 
-# Make scripts/ importable
-ROOT = Path(__file__).resolve().parents[2]
-sys.path.insert(0, str(ROOT / "scripts"))
-
-import rewrite_env  # noqa: E402
+import rewrite_env  # noqa: E402  -- path setup happens in conftest.py
 
 
 def test_rewrites_existing_key(tmp_path: Path) -> None:
@@ -55,6 +51,19 @@ def test_missing_key_raises(tmp_path: Path) -> None:
 
     with pytest.raises(KeyError, match="MISSING"):
         rewrite_env.rewrite(env, {"MISSING": "x"})
+
+
+def test_multiple_missing_keys_all_listed(tmp_path: Path) -> None:
+    """KeyError must mention every missing key, not just the first one encountered."""
+    env = tmp_path / ".env"
+    env.write_text("FOO=keep\n", encoding="utf-8")
+
+    with pytest.raises(KeyError) as excinfo:
+        rewrite_env.rewrite(env, {"FOO": "still_here", "MISSING_A": "x", "MISSING_B": "y"})
+
+    msg = str(excinfo.value)
+    assert "MISSING_A" in msg
+    assert "MISSING_B" in msg
 
 
 def test_no_trailing_newline_preserved(tmp_path: Path) -> None:
