@@ -31,15 +31,36 @@ echo ==^> [2/6] Scaffolding .env and .sapcli.env from templates...
 if exist .env (
   echo   .env already exists, leaving alone.
 ) else (
+  REM Ask the user whether to configure ANTHROPIC_API_KEY now (default = N).
+  set "INTERACTIVE_ENV="
+  set /p INTERACTIVE_ENV="  Configure ANTHROPIC_API_KEY interactively now? [y/N]: "
+
   copy /y .env.example .env >nul
   if errorlevel 1 goto :error
-  REM Generate SESSION_SECRET and rewrite the file via scripts\rewrite_env.py.
+
+  REM Always regenerate SESSION_SECRET.
   set "SESSION_SECRET_VAL="
   for /f "delims=" %%I in ('conda run -n base python -c "import secrets; print(secrets.token_hex(32))"') do set "SESSION_SECRET_VAL=%%I"
   if not defined SESSION_SECRET_VAL goto :error
-  conda run -n base python scripts\rewrite_env.py .env "SESSION_SECRET=!SESSION_SECRET_VAL!"
-  if errorlevel 1 goto :error
-  echo   .env created from .env.example with a fresh SESSION_SECRET.
+
+  if /i "!INTERACTIVE_ENV!"=="y" (
+    set "API_KEY_VAL="
+    set /p API_KEY_VAL="  Enter ANTHROPIC_API_KEY (Hyperspace key, leave empty to skip): "
+    if defined API_KEY_VAL (
+      REM API key assumed safe for delayed expansion (Hyperspace/sk- keys use [A-Za-z0-9_-] only; no !).
+      conda run -n base python scripts\rewrite_env.py .env "SESSION_SECRET=!SESSION_SECRET_VAL!" "ANTHROPIC_API_KEY=!API_KEY_VAL!"
+      if errorlevel 1 goto :error
+      echo   .env created with provided ANTHROPIC_API_KEY and fresh SESSION_SECRET.
+    ) else (
+      conda run -n base python scripts\rewrite_env.py .env "SESSION_SECRET=!SESSION_SECRET_VAL!"
+      if errorlevel 1 goto :error
+      echo   .env created with placeholder ANTHROPIC_API_KEY ^(edit later^) and fresh SESSION_SECRET.
+    )
+  ) else (
+    conda run -n base python scripts\rewrite_env.py .env "SESSION_SECRET=!SESSION_SECRET_VAL!"
+    if errorlevel 1 goto :error
+    echo   .env created from .env.example with a fresh SESSION_SECRET.
+  )
 )
 
 if exist .sapcli.env (
