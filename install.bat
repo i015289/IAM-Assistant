@@ -103,6 +103,57 @@ echo ==^> [6/7] Installing web app requirements...
 conda run -n sapcli-env pip install --quiet -r app\requirements.txt
 if errorlevel 1 goto :error
 
+REM Step 7 — Configure Windows user environment variables (best-effort)
+echo.
+echo ==^> [7/7] Configuring Windows user environment variables...
+
+REM PYTHONUTF8=1 — only set if not already defined in the current shell
+if not defined PYTHONUTF8 (
+  setx PYTHONUTF8 1 >nul
+  if errorlevel 1 (
+    echo   WARNING: setx PYTHONUTF8=1 failed, skipping.
+  ) else (
+    echo   PYTHONUTF8=1 set ^(takes effect in new shells^).
+  )
+) else (
+  echo   PYTHONUTF8 already defined, skipping.
+)
+
+REM Append sapcli-env\Scripts to user PATH if not already present
+set "CONDA_BASE="
+for /f "delims=" %%I in ('conda info --base 2^>nul') do set "CONDA_BASE=%%I"
+if not defined CONDA_BASE (
+  echo   WARNING: 'conda info --base' failed, cannot add sapcli-env to PATH. Skipping.
+) else (
+  set "SAPCLI_SCRIPTS=!CONDA_BASE!\envs\sapcli-env\Scripts"
+  echo !PATH! | findstr /i /c:"!SAPCLI_SCRIPTS!" >nul
+  if errorlevel 1 (
+    REM Read user-level PATH from registry, NOT %PATH%, to avoid copying system PATH into user PATH.
+    set "USER_PATH="
+    for /f "tokens=2,*" %%A in ('reg query "HKCU\Environment" /v Path 2^>nul ^| findstr /i "^    Path"') do set "USER_PATH=%%B"
+    REM Compute proposed combined length and skip if > 1000 chars (setx silently truncates at 1024).
+    if defined USER_PATH (
+      set "NEW_USER_PATH=!USER_PATH!;!SAPCLI_SCRIPTS!"
+    ) else (
+      set "NEW_USER_PATH=!SAPCLI_SCRIPTS!"
+    )
+    call :_pathlen "!NEW_USER_PATH!" NEW_USER_PATH_LEN
+    if !NEW_USER_PATH_LEN! gtr 1000 (
+      echo   WARNING: combined user PATH would be !NEW_USER_PATH_LEN! chars ^(setx truncates at 1024^).
+      echo            Skipping setx to avoid silent truncation. Add manually: !SAPCLI_SCRIPTS!
+    ) else (
+      setx PATH "!NEW_USER_PATH!" >nul
+      if errorlevel 1 (
+        echo   WARNING: setx PATH failed. Add manually to user PATH: !SAPCLI_SCRIPTS!
+      ) else (
+        echo   Added !SAPCLI_SCRIPTS! to user PATH ^(takes effect in new shells^).
+      )
+    )
+  ) else (
+    echo   sapcli-env Scripts already on PATH, skipping.
+  )
+)
+
 echo.
 echo [OK] Install complete.
 echo.
@@ -120,3 +171,18 @@ echo ERROR: install.bat failed. The previous command's output above shows
 echo why. Re-run install.bat after fixing the issue; completed steps will
 echo skip themselves.
 exit /b 1
+
+REM Helper: compute the length of a string into a variable.
+REM Usage: call :_pathlen "the string" RESULT_VAR_NAME
+:_pathlen
+setlocal enabledelayedexpansion
+set "_str=%~1"
+set _len=0
+:_pathlen_loop
+if defined _str (
+  set "_str=!_str:~1!"
+  set /a _len+=1
+  goto :_pathlen_loop
+)
+endlocal & set "%~2=%_len%"
+exit /b 0
