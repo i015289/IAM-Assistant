@@ -5,24 +5,118 @@ REM See docs\superpowers\specs\2026-06-01-one-click-installer-design.md.
 setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
-REM Step 1 — verify conda is available
+REM Step 1 — locate conda; bootstrap fresh Miniconda installs (PATH, init, condarc)
 echo.
 echo ==^> [1/7] Checking for conda...
-where conda >nul 2>&1
-if errorlevel 1 (
-  echo.
-  echo ERROR: conda not found on PATH.
-  echo.
-  echo Install Miniconda from https://docs.anaconda.com/miniconda/, restart
-  echo your Anaconda Prompt or PowerShell so conda is on PATH, then re-run
-  echo install.bat.
-  exit /b 1
+
+REM 1a. Fast path — conda already on PATH
+set "CONDA_EXE="
+set "CONDA_FOUND_VIA_PROBE="
+for /f "delims=" %%I in ('where conda 2^>nul') do (
+  set "CONDA_EXE=%%I"
+  goto :_conda_found
 )
-for /f "delims=" %%I in ('where conda') do (
-  echo   conda: %%I
-  goto :_conda_ok
+
+REM 1b. Probe known install locations
+for %%P in (
+  "%USERPROFILE%\miniconda3\Scripts\conda.exe"
+  "%USERPROFILE%\anaconda3\Scripts\conda.exe"
+  "%LOCALAPPDATA%\miniconda3\Scripts\conda.exe"
+  "%LOCALAPPDATA%\anaconda3\Scripts\conda.exe"
+  "%PROGRAMDATA%\miniconda3\Scripts\conda.exe"
+  "%PROGRAMDATA%\anaconda3\Scripts\conda.exe"
+  "C:\ProgramData\Miniconda3\Scripts\conda.exe"
+) do (
+  if exist %%P (
+    set "CONDA_EXE=%%~P"
+    set "CONDA_FOUND_VIA_PROBE=1"
+    goto :_conda_found
+  )
 )
-:_conda_ok
+
+echo.
+echo ERROR: conda not found on PATH or in any known install location.
+echo.
+echo Install Miniconda from https://docs.anaconda.com/miniconda/, restart
+echo your Anaconda Prompt or PowerShell so conda is on PATH, then re-run
+echo install.bat.
+exit /b 1
+
+:_conda_found
+echo   conda: !CONDA_EXE!
+
+REM 1c. PATH repair — only if found via probing (not via 'where')
+if defined CONDA_FOUND_VIA_PROBE (
+  REM Strip \conda.exe to get the Scripts dir.
+  for %%P in ("!CONDA_EXE!") do set "CONDA_SCRIPTS_DIR=%%~dpP"
+  REM %%~dpP includes a trailing backslash; strip it for cleanliness.
+  if "!CONDA_SCRIPTS_DIR:~-1!"=="\" set "CONDA_SCRIPTS_DIR=!CONDA_SCRIPTS_DIR:~0,-1!"
+
+  REM First check whether the user has a Path value at all. If reg query
+  REM succeeds but our findstr parser produced nothing, that's parser
+  REM failure — refuse to setx (which would clobber the user's PATH).
+  set "USER_PATH_EXISTS="
+  reg query "HKCU\Environment" /v Path >nul 2>&1
+  if not errorlevel 1 set "USER_PATH_EXISTS=1"
+
+  set "USER_PATH="
+  for /f "tokens=2,*" %%A in ('reg query "HKCU\Environment" /v Path 2^>nul ^| findstr /i "^    Path"') do set "USER_PATH=%%B"
+
+  if defined USER_PATH_EXISTS (
+    if defined USER_PATH (
+      setx PATH "!USER_PATH!;!CONDA_SCRIPTS_DIR!" >nul
+      if errorlevel 1 (
+        echo   WARNING: setx PATH failed; new shells may not see conda. Add manually: !CONDA_SCRIPTS_DIR!
+      ) else (
+        echo   Added !CONDA_SCRIPTS_DIR! to user PATH ^(takes effect in new shells^).
+      )
+    ) else (
+      echo   WARNING: user PATH exists but parser returned empty; refusing to setx to avoid clobbering.
+      echo            Add manually to user PATH: !CONDA_SCRIPTS_DIR!
+    )
+  ) else (
+    setx PATH "!CONDA_SCRIPTS_DIR!" >nul
+    if errorlevel 1 (
+      echo   WARNING: setx PATH failed; new shells may not see conda. Add manually: !CONDA_SCRIPTS_DIR!
+    ) else (
+      echo   Added !CONDA_SCRIPTS_DIR! to user PATH ^(takes effect in new shells^).
+    )
+  )
+
+  REM Make conda usable in THIS shell session, not just future ones.
+  set "PATH=!CONDA_SCRIPTS_DIR!;!PATH!"
+)
+
+REM 1d. conda init cmd.exe — detect via AutoRun registry value.
+REM    For probed installs, always re-run init: it's idempotent for matching
+REM    installs and corrective when AutoRun points to a different conda.
+if defined CONDA_FOUND_VIA_PROBE (
+  echo   Running 'conda init cmd.exe' ^(probed install — ensuring AutoRun points here^)...
+  "!CONDA_EXE!" init cmd.exe >nul
+  if errorlevel 1 (
+    echo   WARNING: 'conda init cmd.exe' failed; you can run it manually later.
+  )
+) else (
+  reg query "HKCU\Software\Microsoft\Command Processor" /v AutoRun 2>nul | findstr /i "conda_hook" >nul
+  if errorlevel 1 (
+    echo   Running 'conda init cmd.exe' ^(one-time setup^)...
+    "!CONDA_EXE!" init cmd.exe >nul
+    if errorlevel 1 (
+      echo   WARNING: 'conda init cmd.exe' failed; you can run it manually later.
+    )
+  ) else (
+    echo   conda init for cmd.exe already configured.
+  )
+)
+
+REM 1e. .condarc hint
+if not exist "%USERPROFILE%\.condarc" (
+  echo.
+  echo   NOTE: No .condarc found. If pip/conda installs fail due to network
+  echo   issues, you may need to configure a proxy or internal channel mirror.
+  echo   See https://docs.conda.io/projects/conda/en/latest/user-guide/configuration/use-condarc.html
+  echo.
+)
 
 REM Step 2 — scaffold .env and .sapcli.env from templates
 echo.
