@@ -365,9 +365,12 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .msg-ai pre:hover .copy-btn { opacity: 1; }
 .copy-btn:hover { color: var(--text); border-color: var(--text); }
 
-/* Regenerate button */
+/* Regenerate button — appears on hover under the AI bubble.
+   The gap between bubble and button is padding (not margin) so the
+   mouse stays inside .msg-actions while traversing it; otherwise hover
+   is lost in the gap and the button vanishes before you can click it. */
 .msg-actions {
-  display: flex; gap: 6px; margin-top: 4px; margin-left: 34px;
+  display: flex; gap: 6px; padding-top: 4px; margin-left: 34px;
   visibility: hidden;
 }
 .msg-ai-wrap:hover + .msg-actions,
