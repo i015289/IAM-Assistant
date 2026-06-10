@@ -496,10 +496,6 @@ function renderMarkdown(pane, raw) {
   enableCopyButtons(pane);
 }
 
-function removeRegenButtons() {
-  document.querySelectorAll('.msg-actions').forEach(el => el.remove());
-}
-
 function confirmDialog(message) {
   return new Promise((resolve) => {
     const backdrop = document.createElement('div');
@@ -534,35 +530,6 @@ function confirmDialog(message) {
   });
 }
 
-function attachRegenButton(wrapEl) {
-  removeRegenButtons();
-  if (!wrapEl) return;
-  const actions = document.createElement('div');
-  actions.className = 'msg-actions';
-  const btn = document.createElement('button');
-  btn.className = 'regen-btn';
-  btn.textContent = '↺ Regenerate';
-  btn.addEventListener('click', async () => {
-    const history = loadHistory();
-    const lastUserIdx = [...history].map((m, i) => m.role === 'user' ? i : -1)
-                                    .filter(i => i >= 0).at(-1);
-    if (lastUserIdx === undefined) return;
-    const lastUserContent = history[lastUserIdx].content;
-    const withoutLast = history.slice(0, lastUserIdx);
-    Sessions.saveMessages(Sessions.getActive(), withoutLast);
-    removeRegenButtons();
-    const messages = document.getElementById('messages');
-    if (messages.lastElementChild) messages.lastElementChild.remove(); // ai wrap
-    if (messages.lastElementChild) messages.lastElementChild.remove(); // user bubble
-    const input = document.getElementById('input');
-    input.value = lastUserContent;
-    input.dispatchEvent(new Event('input'));
-    await sendMessage();
-  });
-  actions.appendChild(btn);
-  wrapEl.insertAdjacentElement('afterend', actions);
-}
-
 function resetInputUI() {
   const sendBtn = document.getElementById('send-btn');
   const input = document.getElementById('input');
@@ -595,7 +562,6 @@ async function sendMessage() {
   if (!text) return;
 
   hideWelcome();
-  removeRegenButtons();
 
   const sendBtn = document.getElementById('send-btn');
   input.value = '';
@@ -720,9 +686,6 @@ async function sendMessage() {
 
     if (!streamErrored && !stopped) {
       renderMarkdown(aiEl, buffer);
-    }
-    if (!streamErrored && !stopped) {
-      attachRegenButton(aiEl.closest('.msg-ai-wrap'));
     }
 
   } catch (err) {
@@ -890,8 +853,7 @@ function restoreChatMessages() {
   // conversation visible. Mirrors appendUserMessage / appendAIMessageEl
   // without the streaming cursor.
   const messagesEl = document.getElementById('messages');
-  const history = loadHistory();
-  for (const msg of history) {
+  for (const msg of loadHistory()) {
     if (msg.role === 'user') {
       const el = document.createElement('div');
       el.className = 'msg-user';
@@ -910,11 +872,6 @@ function restoreChatMessages() {
       wrap.appendChild(bubble);
       messagesEl.appendChild(wrap);
     }
-  }
-  // If the conversation ends on an assistant turn, restore the regen
-  // button on it — same affordance you get right after streaming finishes.
-  if (history.at(-1)?.role === 'assistant') {
-    attachRegenButton(messagesEl.lastElementChild);
   }
   scrollToBottom();
 }
