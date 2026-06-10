@@ -405,3 +405,18 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .confirm-ok:hover { opacity: 0.85; }
 
+/* Light theme — Catppuccin Latte. Activated by data-theme="light" on <html>. */
+:root[data-theme="light"] {
+  --bg: #eff1f5;
+  --surface: #e6e9ef;
+  --border: #ccd0da;
+  --text: #4c4f69;
+  --muted: #8c8fa1;
+  --accent: #1e66f5;
+  --green: #40a02b;
+  --red: #d20f39;
+  --amber: #df8e1d;
+  --code-bg: #dce0e8;
+  --border-soft: #bcc0cc;
+  --strong: #dc8a78;
+}
