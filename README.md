@@ -561,7 +561,7 @@ Measured against live ER6 data (2026-05-15, 20 tests, 100% pass rate).
 
 ## Web UI
 
-The `app/` directory contains a standalone web application for browser-based IAM chat. It runs the same Anthropic model and MCP tools as the Claude Code CLI, but provides a persistent URL you can share with team members.
+The `app/` directory contains a standalone web application for browser-based IAM chat. It runs the same Anthropic model and MCP tools as the Claude Code CLI.
 
 ### Stack
 
