@@ -7,7 +7,7 @@ A Claude Code–powered assistant for analyzing SAP IAM (Identity & Access Manag
 This project provides two modes for running natural-language IAM investigations against live ER6 data:
 
 - **Claude Code** — interactive CLI with domain skills for Treasury IAM, Cash Management IAM, and Finance IAM (AP/AR/GL/BA), a goal-driven autonomous agent (`/goal` + `/execute`), and a persistent memo system (`/memo`) for saving findings across sessions.
-- **Web UI** — a FastAPI application with a browser-based chat interface, Anthropic streaming, MCP tool execution, and OIDC authentication.
+- **Web UI** — a FastAPI application with a browser-based chat interface, Anthropic streaming, MCP tool execution, OIDC authentication, and a Light/Dark theme toggle.
 
 ## Benefits
 
@@ -573,6 +573,8 @@ The `app/` directory contains a standalone web application for browser-based IAM
 | Auth | OIDC (Authlib) with signed session cookie; dev mode skips OIDC |
 | Templates | Jinja2 (`ui/templates/`) |
 | Static assets | `ui/static/` (CSS + JS) |
+| Markdown rendering | `marked` + `DOMPurify`, vendored locally in `ui/static/vendor/` (no CDN dependency) |
+| Theming | CSS variables with `data-theme` attribute on `<html>`; Catppuccin Latte (Light) / Mocha (Dark) palettes |
 
 ### Configuration
 
@@ -601,6 +603,10 @@ conda run -n sapcli-env uvicorn app.main:app --reload
 ```
 
 Then open `http://localhost:8080` in your browser.
+
+### Theme
+
+The header has a Light / Dark toggle (next to the logo). The default is **Light** (Catppuccin Latte); clicking it switches to **Dark** (Catppuccin Mocha) and the choice is persisted in `localStorage`. An inline `<head>` script applies the saved theme before the stylesheet loads, so reloading never flashes the wrong palette.
 
 ### Prompt Templates
 
@@ -644,8 +650,10 @@ iam-assistant/
 ├── ui/
 │   ├── templates/index.html    # Jinja2 chat template
 │   └── static/
-│       ├── app.js              # Chat/streaming/tab logic
-│       └── style.css           # Layout and styles
+│       ├── app.js              # Chat/streaming/sessions/theme logic
+│       ├── style.css           # Layout, styles, Dark + Light palettes
+│       ├── prompt-templates.js # Welcome-screen prompt library
+│       └── vendor/             # Vendored marked.js + DOMPurify (no CDN)
 ├── tests/                      # pytest test suite
 │   ├── conftest.py
 │   ├── test_auth.py
