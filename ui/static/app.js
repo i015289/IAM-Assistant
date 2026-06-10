@@ -706,9 +706,14 @@ async function sendMessage() {
         try { chunk = JSON.parse(payload); } catch { chunk = payload; }
         buffer += chunk;
 
-        const cursor = aiEl.querySelector('.cursor');
-        const textNode = document.createTextNode(chunk);
-        aiEl.insertBefore(textNode, cursor);
+        // Render the accumulated buffer as markdown on each chunk so the user
+        // sees a formatted bubble while streaming, not raw `# **` symbols.
+        // The cursor is re-appended after each render so it stays visible.
+        renderMarkdown(aiEl, buffer);
+        const cursor = document.createElement('span');
+        cursor.className = 'cursor';
+        cursor.textContent = '▍';
+        aiEl.appendChild(cursor);
         scrollToBottom();
       }
     }
