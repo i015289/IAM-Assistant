@@ -34,6 +34,14 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .username { color: var(--accent); font-size: 12px; }
 .signout { color: var(--muted); font-size: 12px; text-decoration: none; }
 .signout:hover { color: var(--text); }
+#theme-toggle {
+  background: transparent; border: none;
+  color: var(--muted); cursor: pointer;
+  font-size: 14px; padding: 4px 6px; line-height: 1;
+  border-radius: 4px;
+  font-family: inherit;
+}
+#theme-toggle:hover { color: var(--text); background: var(--border); }
 /* Layout */
 #layout {
   display: flex;
