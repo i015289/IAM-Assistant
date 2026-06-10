@@ -10,6 +10,9 @@
   --green: #a6e3a1;
   --red: #f38ba8;
   --amber: #f9e2af;
+  --code-bg: #11111b;
+  --border-soft: #2a2b3d;
+  --strong: #f5e0dc;
   --header-h: 48px;
 }
 
@@ -119,7 +122,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 }
 .msg-ai {
   background: var(--surface);
-  border: 1px solid #2a2b3d;
+  border: 1px solid var(--border-soft);
   border-radius: 2px 14px 14px 14px;
   padding: 14px 16px;
   font-size: 14.5px;
@@ -136,14 +139,14 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 .msg-ai p  { margin: 0 0 10px; }
 .msg-ai ul, .msg-ai ol { padding-left: 20px; margin: 0 0 10px; }
 .msg-ai li { margin: 3px 0; }
-.msg-ai strong { color: #f5e0dc; }
+.msg-ai strong { color: var(--strong); }
 
 .msg-ai code {
   background: var(--border); padding: 1px 5px; border-radius: 3px;
   font-size: 12.5px; font-family: ui-monospace, monospace; color: var(--amber);
 }
 .msg-ai pre {
-  background: #11111b; border: 1px solid #2a2b3d;
+  background: var(--code-bg); border: 1px solid var(--border-soft);
   padding: 10px 12px; border-radius: 6px; overflow-x: auto;
   margin: 8px 0 12px;
 }
