@@ -890,7 +890,8 @@ function restoreChatMessages() {
   // conversation visible. Mirrors appendUserMessage / appendAIMessageEl
   // without the streaming cursor.
   const messagesEl = document.getElementById('messages');
-  for (const msg of loadHistory()) {
+  const history = loadHistory();
+  for (const msg of history) {
     if (msg.role === 'user') {
       const el = document.createElement('div');
       el.className = 'msg-user';
@@ -909,6 +910,11 @@ function restoreChatMessages() {
       wrap.appendChild(bubble);
       messagesEl.appendChild(wrap);
     }
+  }
+  // If the conversation ends on an assistant turn, restore the regen
+  // button on it — same affordance you get right after streaming finishes.
+  if (history.at(-1)?.role === 'assistant') {
+    attachRegenButton(messagesEl.lastElementChild);
   }
   scrollToBottom();
 }
