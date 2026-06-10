@@ -19,7 +19,7 @@ function applyTheme(theme) {
 }
 
 function toggleTheme() {
-  const current = document.documentElement.getAttribute("data-theme") || "dark";
+  const current = document.documentElement.getAttribute("data-theme") || "light";
   applyTheme(current === "dark" ? "light" : "dark");
 }
 
@@ -968,5 +968,5 @@ setInterval(() => renderSidebar(), 60_000);
 
 // Sync the theme button icon to the attribute set by the inline <head>
 // script, then wire the click handler.
-applyTheme(document.documentElement.getAttribute("data-theme") || "dark");
+applyTheme(document.documentElement.getAttribute("data-theme") || "light");
 document.getElementById("theme-toggle").addEventListener("click", toggleTheme);
