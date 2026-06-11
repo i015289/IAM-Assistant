@@ -608,6 +608,10 @@ Then open `http://localhost:8080` in your browser.
 
 The header has a Light / Dark toggle (next to the logo). The default is **Light** (Catppuccin Latte); clicking it switches to **Dark** (Catppuccin Mocha) and the choice is persisted in `localStorage`. An inline `<head>` script applies the saved theme before the stylesheet loads, so reloading never flashes the wrong palette.
 
+### Session Management
+
+Sessions are stored client-side in `localStorage`. Each session holds its own conversation history; switching sessions restores the full message list. The **+ New** button in the sidebar creates a new empty session. It is disabled while a response is being generated and re-enabled when generation completes or is stopped.
+
 ### Prompt Templates
 
 The welcome screen displays a categorised library of example prompts (`ui/static/prompt-templates.js`). Categories and their contents:

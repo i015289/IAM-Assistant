@@ -533,6 +533,7 @@ function confirmDialog(message) {
 function resetInputUI() {
   const sendBtn = document.getElementById('send-btn');
   const input = document.getElementById('input');
+  const newBtn = document.getElementById('sidebar-new-btn');
   sendBtn.textContent = 'Send';
   sendBtn.style.background = '';
   sendBtn.style.color = '';
@@ -540,12 +541,14 @@ function resetInputUI() {
   input.disabled = false;
   input.placeholder = 'Ask about roles, catalogs, SoD…';
   input.style.opacity = '';
+  newBtn.disabled = false;
   input.focus();
 }
 
 function setGeneratingUI(onStop) {
   const sendBtn = document.getElementById('send-btn');
   const input = document.getElementById('input');
+  const newBtn = document.getElementById('sidebar-new-btn');
   sendBtn.textContent = '■ Stop';
   sendBtn.style.background = 'var(--red)';
   sendBtn.style.color = 'var(--bg)';
@@ -554,6 +557,7 @@ function setGeneratingUI(onStop) {
   input.disabled = true;
   input.placeholder = 'Generating…';
   input.style.opacity = '0.5';
+  newBtn.disabled = true;
 }
 
 async function sendMessage() {
