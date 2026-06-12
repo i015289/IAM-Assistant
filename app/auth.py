@@ -22,7 +22,7 @@ if not _DEV_MODE:
 _signer = URLSafeTimedSerializer(settings.session_secret.get_secret_value())
 _COOKIE = "iam_session"
 _MAX_AGE = 8 * 3600  # 8 hours
-_DEV_USER = {"sub": "dev", "preferred_username": "dev"}
+_DEV_USER = {"sub": "ANZEIGER", "preferred_username": "ANZEIGER"}
 
 
 def _set_session(response: RedirectResponse, data: dict) -> None:

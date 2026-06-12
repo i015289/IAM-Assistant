@@ -590,7 +590,7 @@ SESSION_SECRET=a-long-random-string
 BASE_URL=http://localhost:8080
 ```
 
-**Dev mode:** Set `OIDC_CLIENT_ID=your-client-id` (the placeholder default) to skip OIDC and auto-log in as `dev`.
+**Dev mode:** Set `OIDC_CLIENT_ID=your-client-id` (the placeholder default) to skip OIDC and auto-log in as `ANZEIGER`.
 
 ### Running the Web UI
 
@@ -665,9 +665,14 @@ iam-assistant/
 │   ├── test_config.py
 │   ├── test_main.py
 │   └── test_mcp_client.py
+├── scripts/
+│   ├── build_ppt.py                # Detailed technical overview PPT (mixed audience)
+│   └── build_intro_ppt.py          # 8-slide intro PPT for business stakeholders → docs/IAM_Assistant_Intro.pptx
+├── docs/
+│   ├── IAM_Assistant_Overview.pptx # Technical overview presentation
+│   └── IAM_Assistant_Intro.pptx    # Business stakeholder introduction (run build_intro_ppt.py to regenerate)
 ├── mcp-server/
 │   └── er6_mcp_server.py       # MCP server exposing ER6 tools
-├── skills/                     # Skill source files (mirrored from .claude/skills/ by sync hook)
 │   ├── treasury-iam.md
 │   ├── cash-iam.md
 │   ├── fin-iam.md
