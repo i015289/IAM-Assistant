@@ -49,6 +49,7 @@ CLAUDE.md, skill files, and README are updated as new facts surface — undocume
 | MCP server | `er6` MCP server configured in `.mcp.json` (primary query path) |
 | conda | `sapcli-env` environment with `sapcli` installed (fallback only) |
 | `.sapcli.env` | Connection credentials for ER6 (not committed — fallback only) |
+| `.sapwiki.env` | *(optional, CLI only)* SAP Confluence wiki credentials (`SAPWIKI_BASE_URL`, `SAPWIKI_PAT`) for the `/iam-wiki` skill. Internal-network only — not consumed by the Web UI. |
 
 ## Setup
 
@@ -91,6 +92,52 @@ conda run -n sapcli-env sapcli datapreview osql "SELECT * FROM <TABLE> UP TO 10 
 
 **SQL dialect:** ABAP Open SQL — no JOINs or subqueries. Use the `rows` parameter on `mcp__er6__query_sql` for row limits. **Do not use `UP TO N ROWS` inline when a `WHERE` clause is present** — the ER6 backend rejects this combination.
 
+**ADT Data Preview hard limits** (apply to both MCP and sapcli paths — the backend wraps every SELECT into an ABAP `SELECT … INTO TABLE @DATA(...)` block):
+
+- ❌ No `JOIN`, no subquery, no table aliases (`AS x`) — error: `Only one SELECT statement is allowed.`
+- ❌ Total SQL string length is bounded — long `IN (...)` lists fail with `text literal "..." longer than 255 characters`. Prefer `LIKE '<prefix>%'` or `BETWEEN '<lo>' AND '<hi>'`, or stage the query in multiple calls.
+- ✅ Multi-hop questions are staged through CDS views' built-in associations (see "Recommended CDS Views" below) — the views pre-join what JOIN would otherwise express.
+
+## Recommended CDS Views (vs raw `APS_IAM_W_*` joins)
+
+The IAM team ships **1263 CDS views across 75 sub-packages** under `SR_APS_IAM_*` — these are the supported semantic layer over the raw tables. **Prefer them over hand-written joins on the `APS_IAM_W_*` tables.** Read source via `mcp__er6__read_cds_view`; query like any table via `mcp__er6__query_sql`.
+
+### High-value views for multi-hop questions
+
+| CDS view | Pre-joins / replaces | Notes |
+|---|---|---|
+| `I_APS_BUSINESS_CATALOG` | `APS_IAM_W_BUC` (which is not directly queryable) plus 12 associations (`_App`, `_Successor`, `_RestrictionType`, `_BusinessRoleTemplate`, `_BusinessRoleAssignment`, `_Dependencies`, `_DependingOn`, …) | Search-enabled. **Always prefer this over `APS_IAM_W_BUC`.** |
+| `APS_IAM_AUTH_FIELD_VAL` | `APS_IAM_W_APPAUI` ⋈ `APS_IAM_W_APPAUV` ⋈ `TACTT` ⋈ `APS_IAM_W_RT_AO` | App → AuthObject → Field → LowValue/HighValue. **Activity text is pre-translated** in `ActivityValue` (no `TACTT` join needed). No scope filter — works for **all** apps. |
+| `APS_IAM_INFO_BRT_BC_BASIC` | `APS_IAM_W_BRTBUC` ⋈ `APS_IAM_W_BRT` ⋈ `APS_IAM_W_BRTT` | BRT → BC with template name and component. Cash/Treasury main BRTs are covered; some country variants (`_ID`, `_KR`, `_PL`, `_TH`, …) have `scope_state = '1'` and will be missing — fall back to raw `APS_IAM_W_BRTBUC` for those. |
+
+### ⚠ Migrated (SIA6) vs non-migrated (SIA1) catalogs — two paths for BRT → App
+
+`APS_IAM_BRT_APP` and its base view `APS_IAM_INFO_BC_APP_BASIC` filter to migrated catalogs only. **Treasury and Cash Management catalogs are still on SIA1**, so these views return **0 rows** for `SAP_BR_CASH_MANAGER`, `SAP_BR_TREASURY_*`, etc. Routing rule:
+
+- **Catalog already migrated (SIA6)** → use `APS_IAM_BRT_APP` for one-hop BRT → App.
+- **Catalog still on SIA1** (Cash, Treasury today) → BRT → BC via `APS_IAM_INFO_BRT_BC_BASIC` (or raw `APS_IAM_W_BRTBUC`), then BC → App via raw `APS_IAM_W_BC_APP`. The downstream App → Auth view (`APS_IAM_AUTH_FIELD_VAL`) is unaffected.
+
+### CDS view naming convention (VDM)
+
+| Prefix | Layer | Example |
+|---|---|---|
+| `I_` | Interface (reuse entry point) | `I_APS_BUSINESS_CATALOG`, `I_APS_IAM_APP_CORE` |
+| `C_` | Consumption (OData / Fiori) | `C_APS_IAM_BR` |
+| `R_` | Restricted / value-help | `R_APS_IAM_APP_TIL` |
+| `P_` | Private / technical | `P_APS_IAM_APP` |
+| `D_` | RAP draft | `D_APS_IAM_BUSR_RAP_*` |
+| `APS_IAM_*_DDL`, `APS_IAM_*_BASIC` | Pre-VDM legacy | `APS_IAM_BR_DDL`, `APS_IAM_INFO_*_BASIC` |
+
+### Useful packages to browse (`mcp__er6__list_package`)
+
+- `SR_APS_IAM_BUSINESS_CATALOG` (14) — BC-centric views
+- `SR_APS_IAM_BRT_ODATA` (11) — BRT relationships (BRT→APP/BC/BR/Spaces)
+- `SR_APS_IAM_BROLE_D_ODATA` (89) — Business role views with cross-table joins
+- `SR_APS_IAM_APP_CORE` (36) — App-centric (App↔BC/BR/AuthObject/RestrictionType)
+- `SR_APS_IAM_INFO` (102) and `SR_APS_IAM_INFO_RAP` (71) — aggregation views
+
+> See [`.claude/memo/iam-multihop-cds-cookbook.md`](.claude/memo/iam-multihop-cds-cookbook.md) for the full cookbook with worked end-to-end examples.
+
 ## Skills
 
 ### Skill Selection
@@ -103,6 +150,7 @@ Skills can be activated in two ways:
 /treasury-iam   → Treasury IAM specialist (FOE/BOE SoD, T_DEAL_*, T_TOE_HR)
 /cash-iam       → Cash Management IAM specialist (F_CLM_*, four-eyes principle)
 /fin-iam        → Finance IAM specialist (AP / AR / GL / BA — F_BKPF_*, F_LFA1_*, F_KNA1_*)
+/iam-wiki       → SAP-internal wiki researcher (Confluence, design docs, authorization concepts)
 /goal           → Decompose a high-level objective into a step-by-step plan
 /execute        → Autonomously execute a plan against ER6
 /memo           → Save, load, or manage persistent investigation memos
@@ -115,6 +163,7 @@ Skills can be activated in two ways:
 | `/treasury-iam` | "Treasury", "FOE", "BOE", "MOE", "T_DEAL_*", "T_TOE_HR", "CLOUD_FI_TR_IAM", "hedge request", "Front/Back Office", "TRFCT", "limit check", "whole-BRT audit", "country variant" |
 | `/cash-iam` | "Cash Management", "bank account", "F_CLM_BAM/BAI/BAIC/BAOR", "four-eyes", "submit/approve", "SAP_FIN_BC_CM_*" |
 | `/fin-iam` | "AP", "AR", "GL", "Bank Accounting", "Accounts Payable/Receivable", "F_BKPF_*", "F_LFA1_*", "F_KNA1_*", "journal entry", "dunning", "payment run" |
+| `/iam-wiki` | "wiki", "design doc", "authorization concept", "IAM concept", "what does the wiki say about", or any question better answered by SAP architectural documentation than by ER6 data |
 | `/goal` | High-level objective phrasing: "validate all...", "analyze...", "I want to..." |
 | `/execute` | "run the plan", "execute autonomously", direct objective with clear scope |
 | `/memo` | "save memo", "remember this", "load memo", "what did we find", "resume", "show memos" |
@@ -228,6 +277,43 @@ For IAM App ID <APP_ID>, show all active authorization object instances and thei
 For AR, verify that dunning and incoming payment posting are not both held by a single role without oversight.
 ```
 
+### `/iam-wiki`
+
+Activates the IAM wiki researcher mode. Use this when the answer is more likely to live in SAP-internal Confluence (`wiki.one.int.sap`, `SimplSuite` space) than in ER6 — design intent, authorization concepts, BRT/BC creation procedures, decision guides for new app authorization variants. The skill complements the data skills above: ER6 tells you *what is configured*, the wiki tells you *what was intended*.
+
+**CLI-only.** Requires `.sapwiki.env` (`SAPWIKI_BASE_URL`, `SAPWIKI_PAT`) and SAP-internal network access. Driven by `scripts/sapwiki.py` (pure standard-library Python; `search` and `fetch` subcommands). The Web UI does not include this skill — use the CLI for wiki questions.
+
+Use this for:
+
+- Looking up an IAM concept ("what does the wiki say about restriction types / scope dependency / BRT vs PFCG composite roles")
+- Reading the canonical end-to-end process for creating a new IAM app / app authorization variant (SIA6) / business catalog
+- Reconciling design intent against ER6 reality ("ER6 shows X — does this match the wiki design?")
+- Finding architectural decision guides (e.g. when to create a new AAV vs reuse an existing one)
+- Searching the SimplSuite space by title or full-text
+
+**Example prompts:**
+```
+# Concept lookup
+/iam-wiki
+What does the wiki say about restriction types?
+
+# Design vs reality
+/iam-wiki
+Compare the wiki's stated rule for SoD between submit and approve catalogs against what we see in ER6 for SAP_BR_CASH_MANAGER.
+
+# Process: create a new app authorization variant
+/iam-wiki
+What is the canonical process for creating a new IAM app of type "app authorization variant"?
+
+# Decision guide
+/iam-wiki
+Should I create a new AAV or reuse an existing one for <use-case>? Find the wiki decision guide.
+
+# Cross-reference
+/iam-wiki
+List all wiki pages in the SimplSuite space that mention "App as an Entity".
+```
+
 ### `/goal`
 
 Captures a high-level IAM analysis objective and decomposes it into a concrete, step-by-step plan. Use this when the task spans multiple queries or requires a structured investigation.
@@ -321,8 +407,8 @@ Three hooks are configured in `.claude/settings.json` to automate common tasks:
 
 | Hook | Event | Trigger | What it does |
 |------|-------|---------|--------------|
-| `validate-memo.sh` | PreToolUse | Write | Blocks writes to `.claude/memo/*.md` if any of the 4 required sections are missing. Exits non-zero to abort the write. |
-| `sync-skills.sh` | PostToolUse | Write | After any skill file is written to `.claude/skills/*.md`, automatically copies it to `skills/` (with frontmatter) and `.claude/commands/` (frontmatter stripped). |
+| `validate-memo.sh` | PreToolUse | Write \| Edit | Blocks writes to `.claude/memo/*.md` if any of the 4 required sections are missing. On `Edit` the hook short-circuits (Edit is a partial replace; full validation runs on the next `Write`). Exits non-zero to abort the write. |
+| `sync-skills.sh` | PostToolUse | Write \| Edit | After any skill file is written or edited under `.claude/skills/*.md`, automatically copies it to `skills/` (with frontmatter) and `.claude/commands/` (frontmatter stripped). Both `Write` and `Edit` are matched so partial edits stay in sync. |
 | `log-query.sh` | PostToolUse | `mcp__er6__query_sql` | Asynchronously appends each ER6 SQL query with a timestamp to `.claude/memo/.session-log.md` for audit and replay. |
 
 ### Memo Validation
@@ -372,7 +458,7 @@ rows limit: 20
 | `APS_IAM_W_APPAUO` | Auth object exclusions (outbound) |
 | `APS_IAM_W_BC_APP` | Business catalog app assignments (use this for catalog lookups by app name) |
 | `APS_IAM_W_BRTBUC` | Business Role Template to Business Catalog assignments |
-| `APS_IAM_W_BUC` | Business Catalog master (⚠ not directly queryable — use `APS_IAM_W_BRTBUC` or `APS_IAM_W_BC_APP` instead) |
+| `APS_IAM_W_BUC` | Business Catalog master (⚠ not directly queryable — use CDS view `I_APS_BUSINESS_CATALOG`, or fall back to `APS_IAM_W_BRTBUC` / `APS_IAM_W_BC_APP`) |
 | `SUI_TM_MM_APP` | Fiori Launchpad app–catalog assignments (⚠ Treasury apps stored as GUIDs here — use `APS_IAM_W_BC_APP` instead) |
 | `SUI_TM_MM_CAT` | Launchpad technical catalogs |
 | `USOBT` / `USOBX` | Authorization defaults for T-codes |
@@ -561,7 +647,7 @@ Measured against live ER6 data (2026-05-15, 20 tests, 100% pass rate).
 
 ## Web UI
 
-The `app/` directory contains a standalone web application for browser-based IAM chat. It runs the same Anthropic model and MCP tools as the Claude Code CLI.
+The `app/` directory contains a standalone web application for browser-based IAM chat. It runs the same Anthropic model and ER6 MCP tools as the Claude Code CLI. **Scope:** the Web UI is focused on live ER6 data only — the `/iam-wiki` skill and `scripts/sapwiki.py` are CLI-only and not exposed here, since the SAP Confluence wiki is a research/design surface rather than an end-user one. For wiki questions, use the Claude Code CLI.
 
 ### Stack
 
@@ -667,7 +753,8 @@ iam-assistant/
 │   └── test_mcp_client.py
 ├── scripts/
 │   ├── build_ppt.py                # Detailed technical overview PPT (mixed audience)
-│   └── build_intro_ppt.py          # 8-slide intro PPT for business stakeholders → docs/IAM_Assistant_Intro.pptx
+│   ├── build_intro_ppt.py          # 8-slide intro PPT for business stakeholders → docs/IAM_Assistant_Intro.pptx
+│   └── sapwiki.py                  # SAP Confluence wiki fetcher (search + fetch); used by /iam-wiki skill
 ├── docs/
 │   ├── IAM_Assistant_Overview.pptx # Technical overview presentation
 │   └── IAM_Assistant_Intro.pptx    # Business stakeholder introduction (run build_intro_ppt.py to regenerate)
@@ -676,22 +763,25 @@ iam-assistant/
 │   ├── treasury-iam.md
 │   ├── cash-iam.md
 │   ├── fin-iam.md
+│   ├── iam-wiki.md
 │   ├── goal.md
 │   ├── execute.md
 │   └── memo.md
 └── .claude/
     ├── hooks/
-    │   ├── validate-memo.sh    # PreToolUse/Write: blocks memo writes with missing sections
-    │   ├── sync-skills.sh      # PostToolUse/Write: syncs .claude/skills/ → skills/ and commands/
+    │   ├── validate-memo.sh    # PreToolUse/Write|Edit: blocks memo writes with missing sections (Edit short-circuits)
+    │   ├── sync-skills.sh      # PostToolUse/Write|Edit: syncs .claude/skills/ → skills/ and commands/
     │   └── log-query.sh        # PostToolUse/query_sql (async): logs queries to .session-log.md
     ├── memo/
     │   ├── INDEX.md            # Index of all saved memos (auto-loaded at session start)
+    │   ├── iam-multihop-cds-cookbook.md  # Reference cookbook: CDS view paths, SIA1/SIA6 routing, ADT limits
     │   ├── .session-log.md     # Auto-generated query log (written by log-query hook)
     │   └── *.md                # Per-investigation memo files
     ├── skills/
     │   ├── treasury-iam.md     # Treasury IAM skill (FOE/BOE SoD, T_DEAL_*, T_TOE_HR)
     │   ├── cash-iam.md         # Cash Management IAM skill (F_CLM_* auth objects)
     │   ├── fin-iam.md          # Finance IAM skill (AP/AR/GL/BA — F_BKPF_*, F_LFA1_*, F_KNA1_*)
+    │   ├── iam-wiki.md         # SAP Confluence wiki researcher (CLI-only; uses scripts/sapwiki.py)
     │   ├── goal.md             # Goal decomposition skill
     │   ├── execute.md          # Autonomous multi-step execution agent
     │   └── memo.md             # Persistent memo system
@@ -699,6 +789,7 @@ iam-assistant/
     │   ├── treasury-iam.md     # /treasury-iam slash command
     │   ├── cash-iam.md         # /cash-iam slash command
     │   ├── fin-iam.md          # /fin-iam slash command
+    │   ├── iam-wiki.md         # /iam-wiki slash command
     │   ├── goal.md             # /goal slash command
     │   ├── execute.md          # /execute slash command
     │   └── memo.md             # /memo slash command

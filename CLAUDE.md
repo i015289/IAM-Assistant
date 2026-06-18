@@ -49,6 +49,16 @@ Use `/memo` (see `.claude/skills/memo.md`) to save, load, update, and manage per
 - Output from sapcli is `|`-separated, similar to CSV with a header row
 - Authentication: username/password (`ANZEIGER`/`display`), read-only access, SSL enabled
 
+#### ADT Data Preview backend limitations (apply to both MCP and sapcli paths)
+
+The ER6 backend wraps every SELECT into an ABAP `SELECT … INTO TABLE @DATA(...)` block before executing it. This adds several limitations that surface as cryptic errors:
+
+- **No `JOIN`** — error: `"Only one SELECT statement is allowed."` Use the rich associations on a single CDS view (e.g. `I_APS_BUSINESS_CATALOG._App`) or split into multiple queries and combine in the application.
+- **No subqueries** — same error as above; sometimes also `Unknown column name "<truncated>"` because the wrapper truncates the inner SELECT.
+- **No table aliases (`AS x`)** — also triggers `"Only one SELECT statement is allowed."` Refer to columns and tables by their unqualified name.
+- **Total SQL string length is bounded** — long IN lists or long literals fail with `"The text literal '...' is longer than 255 characters"` or `"Literals across more than one line are not allowed."` Prefer `LIKE '<prefix>%'` or `BETWEEN '<lo>' AND '<hi>'` over `IN (...)` lists with more than ~5–10 entries.
+- **Multi-hop questions must be staged** — pull intermediate results, then issue a follow-up query with a tighter filter, or aggregate in the application layer. The CDS views above (`I_APS_BUSINESS_CATALOG`, `APS_IAM_AUTH_FIELD_VAL`, `APS_IAM_INFO_BRT_BC_BASIC`) already pre-join the most common multi-hop paths so a single staged query is usually enough.
+
 ## Data Dictionary
 
 ### TDEVC — ABAP Packages
@@ -442,7 +452,7 @@ Maps apps to their Fiori descriptor/UI5 variant IDs, controlling app groupabilit
 
 ### APS_IAM_W_BUC — Business Catalogs (master)
 Master table for Business Catalogs — the primary grouping unit for Fiori apps in IAM.
-**⚠ Not directly queryable via `mcp__er6__query_sql`** — use `APS_IAM_W_BRTBUC` to list catalogs by BRT, or `APS_IAM_W_BC_APP` to look up the catalog for a specific app.
+**⚠ Not directly queryable via `mcp__er6__query_sql`** — query the CDS view `I_APS_BUSINESS_CATALOG` instead (same data, plus rich associations to Apps, Successors, Restriction Types, BRTs). Alternatives: `APS_IAM_W_BRTBUC` to list catalogs by BRT, or `APS_IAM_W_BC_APP` to look up the catalog for a specific app.
 - `BU_CATALOG_ID`: Business Catalog identifier (PK, e.g. `SAP_FIN_BC_GL_REPORTING_MY_PC`)
 - `BU_CATALOG_TYPE`: Catalog type (`A`=standard)
 - `SCOPE_DEPENDENT`: Whether the catalog is scope-dependent (X = yes)
@@ -453,6 +463,48 @@ Master table for Business Catalogs — the primary grouping unit for Fiori apps 
 - `DERIVABLE` / `RESTRICTABLE` / `READ_ONLY`: Catalog-level flags
 - `CREATE_USER` / `CHANGE_USER`: Audit users
 - `CREATE_TIMESTAMP` / `CHANGE_TIMESTAMP`: Audit timestamps
+
+## Recommended CDS Views (vs raw `APS_IAM_W_*` joins)
+
+The IAM team ships **1263 CDS views** across `SR_APS_IAM_*` packages — these are the supported semantic layer over the raw tables. **Prefer them over hand-written joins on the `APS_IAM_W_*` tables**, except where noted below.
+
+Use `mcp__er6__read_cds_view` to read a view's source, and `mcp__er6__query_sql` to query it like any table.
+
+### High-value views for multi-hop questions
+
+| CDS view | Replaces / pre-joins | Notes |
+|---|---|---|
+| `I_APS_BUSINESS_CATALOG` | `APS_IAM_W_BUC` (which is not directly queryable) | BC master with associations to `_App`, `_Successor`, `_RestrictionType`, `_BusinessRoleTemplate`, `_BusinessRoleAssignment`, `_Dependencies`, `_DependingOn`. Search-enabled. **Always prefer this over `APS_IAM_W_BUC`.** |
+| `APS_IAM_AUTH_FIELD_VAL` | `APS_IAM_W_APPAUI` ⋈ `APS_IAM_W_APPAUV` ⋈ `TACTT` ⋈ `APS_IAM_W_RT_AO` | App → AuthObject → Field → LowValue/HighValue, with translated activity text in `ActivityValue`. No scope filter — works for **all** apps (SIA1 + SIA6). Filter by `AppId`. |
+| `APS_IAM_INFO_BRT_BC_BASIC` | `APS_IAM_W_BRTBUC` ⋈ `APS_IAM_W_BRT` ⋈ `APS_IAM_W_BRTT` | BRT → BC with template name and component. Works for any BRT whose `scope_state = '3'` OR which is not scope-dependent. Cash/Treasury main BRTs are covered; some country variants (`_ID`, `_KR`, `_PL`, `_TH`, …) have `scope_state = '1'` and will be missing — fall back to raw `APS_IAM_W_BRTBUC` for those. |
+
+### ⚠ Migrated (SIA6) vs non-migrated (SIA1) catalogs — two paths for BRT → App
+
+`APS_IAM_BRT_APP` and its base view `APS_IAM_INFO_BC_APP_BASIC` are filtered to `scope = '3'` / `app_migration_status = '3'` (catalog migrated to IAM-Apps / SIA6). **Treasury and Cash Management catalogs are still on SIA1**, so these views return **0 rows** for `SAP_BR_CASH_MANAGER`, `SAP_BR_TREASURY_*`, etc. — even though raw `APS_IAM_W_BC_APP` clearly has the data.
+
+Routing rule:
+
+- **Catalog already migrated (SIA6)** → use `APS_IAM_BRT_APP` for one-hop BRT → App.
+- **Catalog still on SIA1** (Cash, Treasury, most non-FIN areas today) → BRT → BC via `APS_IAM_INFO_BRT_BC_BASIC` (or raw `APS_IAM_W_BRTBUC`), then BC → App via raw `APS_IAM_W_BC_APP` / `APS_IAM_W_BUCAPP`. The downstream App → Auth view (`APS_IAM_AUTH_FIELD_VAL`) is unaffected by this distinction.
+
+### CDS view naming convention (VDM)
+
+| Prefix | Layer | Purpose |
+|---|---|---|
+| `I_` | Interface | Standardised business entity (reuse entry point), e.g. `I_APS_BUSINESS_CATALOG`, `I_APS_IAM_APP_CORE` |
+| `C_` | Consumption | OData / Fiori-facing view, e.g. `C_APS_IAM_BR` |
+| `R_` | Restricted / value-help | Search helps, restricted projections |
+| `P_` | Private | Internal/technical view |
+| `D_` | Draft | RAP draft view |
+| `APS_IAM_*_DDL`, `APS_IAM_*_BASIC` | Legacy | Pre-VDM OData and basic info views — still widely used (`APS_IAM_BR_DDL`, `APS_IAM_BRT_DDL`, `APS_IAM_INFO_*_BASIC`) |
+
+### Useful packages to browse (`mcp__er6__list_package`)
+
+- `SR_APS_IAM_BUSINESS_CATALOG` — 14 BC-centric views
+- `SR_APS_IAM_BRT_ODATA` — 11 BRT relationship views (BRT→APP/BC/BR/Spaces)
+- `SR_APS_IAM_BROLE_D_ODATA` — 89 BR (instantiated business role) views with cross-table joins
+- `SR_APS_IAM_APP_CORE` — 36 App-centric views (App↔BC/BR/AuthObject/RestrictionType)
+- `SR_APS_IAM_INFO` (102) and `SR_APS_IAM_INFO_RAP` (71) — aggregation views combining multiple entities
 
 ## Business Role Templates Quick Reference
 

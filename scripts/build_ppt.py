@@ -694,9 +694,12 @@ def slide_skills(prs, page_num, total):
             y += Inches(0.95)
 
     # Footer note
-    add_text(slide, Inches(0.5), Inches(6.55), Inches(12.3), Inches(0.4),
+    add_text(slide, Inches(0.5), Inches(6.45), Inches(12.3), Inches(0.4),
              "Activated explicitly  (e.g. /treasury-iam)  or automatically by keyword match.",
              font_size=12, color=GREY_MED, align=PP_ALIGN.CENTER)
+    add_text(slide, Inches(0.5), Inches(6.85), Inches(12.3), Inches(0.4),
+             "Plus  /iam-wiki  — SAP Confluence wiki researcher (CLI-only; not exposed in the Web UI).",
+             font_size=11, color=GREY_MED, align=PP_ALIGN.CENTER)
 
     add_footer(slide, page_num, total)
 
@@ -1184,7 +1187,7 @@ def slide_data_dict_overview(prs, page_num, total):
          "APP_ID, AUTH_OBJECT, STATUS"],
         ["APS_IAM_W_BC_APP", "Catalog", "Business catalog ↔ app assignments",
          "BU_CATALOG_ID, APP_ID, IS_FOLDER"],
-        ["APS_IAM_W_BUC", "Catalog", "Business Catalog master  (⚠ not directly queryable)",
+        ["APS_IAM_W_BUC", "Catalog", "Business Catalog master  (⚠ use CDS  I_APS_BUSINESS_CATALOG)",
          "BU_CATALOG_ID, AGR_NAME"],
         ["APS_IAM_W_BRTBUC", "Role", "BRT ↔ Business Catalog assignments",
          "BRT_ID, BU_CATALOG_ID"],
@@ -1273,6 +1276,62 @@ def slide_table_relationships(prs, page_num, total):
     add_footer(slide, page_num, total)
 
 
+def slide_cds_view_layer(prs, page_num, total):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    set_slide_background(slide, BG_LIGHT)
+    add_header_bar(slide, "CDS View Layer  ·  Recommended over raw joins",
+                   "1263 CDS views across 75 sub-packages under SR_APS_IAM_*  —  the supported semantic layer")
+
+    # High-value views table
+    add_text(slide, Inches(0.4), Inches(1.55), Inches(12.5), Inches(0.4),
+             "High-value views for multi-hop questions",
+             font_size=15, bold=True, color=NAVY)
+
+    headers = ["CDS view", "Pre-joins / replaces", "Note"]
+    rows = [
+        ["I_APS_BUSINESS_CATALOG",
+         "APS_IAM_W_BUC + 12 associations  (_App, _Successor, _RestrictionType, _BRT, …)",
+         "Search-enabled. Always prefer over raw W_BUC."],
+        ["APS_IAM_AUTH_FIELD_VAL",
+         "APPAUI ⋈ APPAUV ⋈ TACTT ⋈ RT_AO  (App → AuthObject → Field → Value)",
+         "ActivityValue is pre-translated. No scope filter — works for SIA1 + SIA6."],
+        ["APS_IAM_INFO_BRT_BC_BASIC",
+         "BRTBUC ⋈ BRT ⋈ BRTT  (BRT → BC with template name + component)",
+         "Hidden filter: scope_state='3' or non-scope-dependent. Country variants may be missing — fall back to raw BRTBUC."],
+    ]
+    add_table(slide, Inches(0.4), Inches(2.0), Inches(12.5), Inches(1.95),
+              headers, rows, body_size=10, header_size=11)
+
+    # Routing rule
+    add_text(slide, Inches(0.4), Inches(4.15), Inches(12.5), Inches(0.4),
+             "⚠ Routing rule  ·  SIA6 (migrated) vs SIA1 (legacy) catalogs",
+             font_size=15, bold=True, color=ACCENT2)
+
+    routing = [
+        ("Catalog migrated to IAM-Apps (SIA6).",
+         "Use APS_IAM_BRT_APP for one-hop BRT → App."),
+        ("Catalog still on SIA1  (Cash Management, Treasury today).",
+         "BRT → BC via APS_IAM_INFO_BRT_BC_BASIC, then BC → App via raw APS_IAM_W_BC_APP. Auth view (APS_IAM_AUTH_FIELD_VAL) works regardless."),
+    ]
+    add_bullets(slide, Inches(0.4), Inches(4.6), Inches(12.5), Inches(1.1),
+                routing, font_size=11, bullet_color=ACCENT2)
+
+    # VDM naming convention card
+    add_text(slide, Inches(0.4), Inches(5.8), Inches(12.5), Inches(0.4),
+             "VDM naming convention",
+             font_size=15, bold=True, color=NAVY)
+
+    naming = [
+        ("I_  Interface (reuse entry point).", "I_APS_BUSINESS_CATALOG, I_APS_IAM_APP_CORE"),
+        ("C_  Consumption (OData / Fiori).", "C_APS_IAM_BR"),
+        ("R_ / P_ / D_  Restricted / Private / Draft.", "R_APS_IAM_APP_TIL, P_APS_IAM_APP, D_APS_IAM_BUSR_RAP_*"),
+        ("APS_IAM_*_DDL, *_BASIC.", "Pre-VDM legacy — still widely used."),
+    ]
+    add_bullets(slide, Inches(0.4), Inches(6.2), Inches(12.5), Inches(0.85),
+                naming, font_size=10, bullet_color=ACCENT)
+    add_footer(slide, page_num, total)
+
+
 def slide_mcp_tools(prs, page_num, total):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     set_slide_background(slide, BG_LIGHT)
@@ -1315,11 +1374,12 @@ def slide_mcp_tools(prs, page_num, total):
              font_size=15, bold=True, color=NAVY)
 
     constraints = [
-        ("No JOINs.", "Run separate queries; correlate in memory."),
+        ("No JOINs.", "Run separate queries; correlate in memory — or use a CDS view that pre-joins."),
         ("No subqueries.", "Same — break into multiple round-trips."),
+        ("No table aliases (AS x).", "Same error as JOIN — refer to columns by unqualified name."),
+        ("Long IN(...) lists fail at ~255 chars.", "Use LIKE '<prefix>%' or BETWEEN '<lo>' AND '<hi>' instead."),
         ("UP TO N ROWS + WHERE is rejected.", "Use the rows parameter on query_sql instead — always safe."),
-        ("UP TO N ROWS without WHERE is fine.", "But the rows parameter is preferred for consistency."),
-        ("APS_IAM_W_BUC is not directly queryable.", "Use APS_IAM_W_BRTBUC or APS_IAM_W_BC_APP instead."),
+        ("APS_IAM_W_BUC is not directly queryable.", "Use CDS view I_APS_BUSINESS_CATALOG (preferred), or raw APS_IAM_W_BRTBUC / W_BC_APP."),
         ("SUI_TM_MM_APP stores Treasury app IDs as GUIDs.", "Use APS_IAM_W_BC_APP for app-name lookups."),
         ("Active vs superseded instances.", "INACTIVE = blank means active; INACTIVE = 'X' means superseded."),
     ]
@@ -1770,13 +1830,15 @@ def slide_hooks_detail(prs, page_num, total):
     add_card(slide, Inches(0.4), Inches(1.6), Inches(4.1), Inches(5.0),
              title="validate-memo.sh",
              body=(
-                 "Phase: PreToolUse / Write\n"
+                 "Phase: PreToolUse / Write | Edit\n"
                  "Match: .claude/memo/*.md\n\n"
                  "What it does\n"
                  "  •  Reads the proposed file content\n"
                  "  •  Greps for the 4 required sections\n"
                  "  •  Exits non-zero if any are missing\n"
-                 "  •  Reports which sections were missing\n\n"
+                 "  •  Reports which sections were missing\n"
+                 "  •  Edit short-circuits — partial replace\n"
+                 "    is validated on the next full Write\n\n"
                  "Why it matters\n"
                  "  Prevents shallow / abandoned memos\n"
                  "  Enforces uniform structure across\n"
@@ -1788,18 +1850,19 @@ def slide_hooks_detail(prs, page_num, total):
     add_card(slide, Inches(4.65), Inches(1.6), Inches(4.1), Inches(5.0),
              title="sync-skills.sh",
              body=(
-                 "Phase: PostToolUse / Write\n"
+                 "Phase: PostToolUse / Write | Edit\n"
                  "Match: .claude/skills/*.md\n\n"
                  "What it does\n"
                  "  •  Copies edited skill to skills/\n"
                  "    (with frontmatter)\n"
                  "  •  Copies it to .claude/commands/\n"
                  "    (frontmatter stripped)\n"
-                 "  •  Three locations stay identical\n\n"
+                 "  •  Three locations stay identical\n"
+                 "  •  Both Write and Edit are matched\n"
+                 "    so partial edits stay in sync\n\n"
                  "Why it matters\n"
                  "  Skills are the source of domain truth.\n"
-                 "  Drift between copies = silent\n"
-                 "  inconsistency in answers."
+                 "  Drift = silent inconsistency."
              ),
              accent=ACCENT2, body_size=11)
 
@@ -1857,10 +1920,11 @@ def slide_webui_detail(prs, page_num, total):
         ("Session history.", "Multiple sessions per user with rename/delete."),
         ("OIDC + dev mode.", "Real OIDC in prod  ·  auto-login as 'dev' for local."),
         ("Tool call transparency.", "Every MCP call is shown — table, params, result rows."),
+        ("Scope: live ER6 only.", "/iam-wiki and SAP Confluence access are CLI-only — wiki is a research surface, not an end-user one."),
         ("Vendored libs.", "marked + DOMPurify shipped locally — zero CDN dependency."),
     ]
     add_bullets(slide, Inches(6.85), Inches(2.0), Inches(6.0), Inches(4.8),
-                features, font_size=11, bullet_color=ACCENT)
+                features, font_size=10, bullet_color=ACCENT)
     add_footer(slide, page_num, total)
 
 
@@ -2132,6 +2196,7 @@ def build():
         slide_mcp_tools,
         slide_data_dict_overview,
         slide_table_relationships,
+        slide_cds_view_layer,
         slide_skill_files,
 
         # --- Part 3: Domain skills ---

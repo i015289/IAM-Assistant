@@ -6,7 +6,7 @@
 window.PROMPT_TEMPLATES = [
   // Getting Started — onboarding questions, no placeholders. Click → send-ready.
   { category: 'Getting Started', title: 'What can I ask?',
-    prompt: 'What kinds of IAM questions can you help me with? Give me a short overview of your capabilities and the data you can query.' },
+    prompt: 'What kinds of IAM questions can you help me with? Give me a short overview of your capabilities and the data you can query. Note: this Web UI is focused on live ER6 data; for SAP-internal wiki / design-doc questions use the Claude Code CLI with /iam-wiki instead.' },
   { category: 'Getting Started', title: 'Glossary: BRT, BC, App',
     prompt: 'Explain the IAM concepts I will encounter most often: Business Role Template (BRT), Business Catalog, IAM App, Restriction Type. Use plain language.' },
   { category: 'Getting Started', title: 'What is SoD?',

@@ -2,6 +2,8 @@
 # Syncs a skill file written to .claude/skills/ into skills/ (with frontmatter)
 # and .claude/commands/ (without frontmatter).
 # Called by PostToolUse hook; receives {"tool_input":{"file_path":...}} on stdin.
+# Compatible with both Write and Edit tools — only reads file_path, then
+# re-syncs the on-disk file regardless of which tool produced it.
 
 INPUT="$(cat)"
 FILE_PATH="$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null)"
