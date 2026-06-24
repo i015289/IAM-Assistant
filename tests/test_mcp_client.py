@@ -32,7 +32,7 @@ async def test_call_tool_returns_text_result():
         proc.returncode = None
         mock_exec.return_value = proc
 
-        client = MCPClient("mcp-server/er6_mcp_server.py")
+        client = MCPClient("conda", ["run", "--no-capture-output", "-n", "sapcli-env", "python", "mcp-server/er6_mcp_server.py"])
         await client.start()
         result = await client.call_tool("query_sql", {"sql": "SELECT DEVCLASS FROM TDEVC UP TO 1 ROWS"})
         assert "DEVCLASS" in result
@@ -62,7 +62,7 @@ async def test_call_tool_raises_on_error_response():
         proc.returncode = None
         mock_exec.return_value = proc
 
-        client = MCPClient("mcp-server/er6_mcp_server.py")
+        client = MCPClient("conda", ["run", "--no-capture-output", "-n", "sapcli-env", "python", "mcp-server/er6_mcp_server.py"])
         await client.start()
         with pytest.raises(RuntimeError, match="Invalid request"):
             await client.call_tool("query_sql", {"sql": "SELECT 1"})

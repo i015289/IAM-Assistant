@@ -1,25 +1,28 @@
 import asyncio
 import json
-from pathlib import Path
+import os
 
 
 class MCPClient:
-    """Manages a long-lived er6_mcp_server.py subprocess over stdio MCP protocol."""
+    """Manages a long-lived MCP server subprocess over stdio."""
 
-    def __init__(self, server_script: str):
-        self._script = str(Path(server_script).resolve())
+    def __init__(self, command: str, args: list[str], env: dict[str, str] | None = None):
+        self._command = command
+        self._args = args
+        self._env = env
         self._proc: asyncio.subprocess.Process | None = None
         self._request_id = 0
         self.tools: list[dict] = []
 
     async def start(self) -> None:
         """Start the subprocess and perform MCP handshake."""
+        merged_env = {**os.environ, **(self._env or {})}
         self._proc = await asyncio.create_subprocess_exec(
-            "conda", "run", "--no-capture-output", "-n", "sapcli-env",
-            "python", self._script,
+            self._command, *self._args,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.DEVNULL,
+            env=merged_env,
         )
         await self._send({"method": "initialize", "params": {
             "protocolVersion": "2024-11-05",
@@ -75,3 +78,41 @@ class MCPClient:
         if self._proc and self._proc.returncode is None:
             self._proc.terminate()
             await self._proc.wait()
+
+
+class MCPMultiClient:
+    """Aggregates multiple MCPClient instances, merging their tool lists."""
+
+    def __init__(self, clients: dict[str, "MCPClient"]):
+        self._clients = clients
+        # Map tool name → client for routing call_tool
+        self._tool_owner: dict[str, "MCPClient"] = {}
+        self.tools: list[dict] = []
+
+    async def start(self) -> None:
+        for name, client in self._clients.items():
+            try:
+                await client.start()
+                for tool in client.tools:
+                    self._tool_owner[tool["name"]] = client
+                self.tools.extend(client.tools)
+            except Exception as exc:
+                # Non-fatal: log and continue so one bad server doesn't block others
+                import logging
+                logging.getLogger(__name__).warning("MCP server %r failed to start: %s", name, exc)
+
+    async def call_tool(self, name: str, arguments: dict) -> str:
+        client = self._tool_owner.get(name)
+        if client is None:
+            raise RuntimeError(f"Unknown MCP tool: {name!r}")
+        return await client.call_tool(name, arguments)
+
+    async def stop(self) -> None:
+        for client in self._clients.values():
+            await client.stop()
+
+    # Expose proc status of primary client for health check in main.py
+    @property
+    def _proc(self):
+        first = next(iter(self._clients.values()), None)
+        return first._proc if first else None

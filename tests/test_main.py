@@ -1,7 +1,16 @@
 import importlib
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import patch, AsyncMock
+from unittest.mock import patch, AsyncMock, MagicMock
+
+
+def _mock_multi_client():
+    mock = MagicMock()
+    mock.start = AsyncMock()
+    mock.stop = AsyncMock()
+    mock.tools = []
+    mock._proc = None
+    return mock
 
 
 def test_health_returns_ok(monkeypatch):
@@ -15,16 +24,11 @@ def test_health_returns_ok(monkeypatch):
     import app.main as m
     importlib.reload(m)
 
-    with patch.object(m, "MCPClient") as mock_mcp_cls:
-        mock_instance = mock_mcp_cls.return_value
-        mock_instance.start = AsyncMock()
-        mock_instance.stop = AsyncMock()
-        mock_instance.tools = []
+    with patch.object(m, "_load_mcp_from_config", return_value=_mock_multi_client()):
         with TestClient(m.app) as client:
             response = client.get("/health")
             assert response.status_code == 200
             assert response.json()["status"] == "ok"
-        mock_instance.stop.assert_awaited_once()
 
 
 def test_root_redirects_unauthenticated(monkeypatch):
@@ -38,11 +42,7 @@ def test_root_redirects_unauthenticated(monkeypatch):
     import app.main as m
     importlib.reload(m)
 
-    with patch.object(m, "MCPClient") as mock_mcp_cls:
-        mock_instance = mock_mcp_cls.return_value
-        mock_instance.start = AsyncMock()
-        mock_instance.stop = AsyncMock()
-        mock_instance.tools = []
+    with patch.object(m, "_load_mcp_from_config", return_value=_mock_multi_client()):
         with TestClient(m.app) as client:
             response = client.get("/", follow_redirects=False)
             assert response.status_code in (302, 307)

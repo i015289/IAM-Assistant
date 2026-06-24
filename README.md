@@ -49,7 +49,7 @@ CLAUDE.md, skill files, and README are updated as new facts surface — undocume
 | MCP server | `er6` MCP server configured in `.mcp.json` (primary query path) |
 | conda | `sapcli-env` environment with `sapcli` installed (fallback only) |
 | `.sapcli.env` | Connection credentials for ER6 (not committed — fallback only) |
-| `.sapwiki.env` | *(optional, CLI only)* SAP Confluence wiki credentials (`SAPWIKI_BASE_URL`, `SAPWIKI_PAT`) for the `/iam-wiki` skill. Internal-network only — not consumed by the Web UI. |
+| `sap-wiki` MCP | SAP Confluence wiki access for the `/iam-wiki` skill — configured in `.mcp.json` with an API token. Requires SAP internal network. |
 
 ## Setup
 
@@ -281,7 +281,7 @@ For AR, verify that dunning and incoming payment posting are not both held by a 
 
 Activates the IAM wiki researcher mode. Use this when the answer is more likely to live in SAP-internal Confluence (`wiki.one.int.sap`, `SimplSuite` space) than in ER6 — design intent, authorization concepts, BRT/BC creation procedures, decision guides for new app authorization variants. The skill complements the data skills above: ER6 tells you *what is configured*, the wiki tells you *what was intended*.
 
-**CLI-only.** Requires `.sapwiki.env` (`SAPWIKI_BASE_URL`, `SAPWIKI_PAT`) and SAP-internal network access. Driven by `scripts/sapwiki.py` (pure standard-library Python; `search` and `fetch` subcommands). The Web UI does not include this skill — use the CLI for wiki questions.
+Requires SAP-internal network access. The skill is driven by the `sap-wiki` MCP server (configured in `.mcp.json`) — no separate script or credentials file needed. Available in both the Claude Code CLI and the Web UI.
 
 Use this for:
 
@@ -647,7 +647,7 @@ Measured against live ER6 data (2026-05-15, 20 tests, 100% pass rate).
 
 ## Web UI
 
-The `app/` directory contains a standalone web application for browser-based IAM chat. It runs the same Anthropic model and ER6 MCP tools as the Claude Code CLI. **Scope:** the Web UI is focused on live ER6 data only — the `/iam-wiki` skill and `scripts/sapwiki.py` are CLI-only and not exposed here, since the SAP Confluence wiki is a research/design surface rather than an end-user one. For wiki questions, use the Claude Code CLI.
+The `app/` directory contains a standalone web application for browser-based IAM chat. It runs the same Anthropic model and MCP tools as the Claude Code CLI, including both ER6 data access and the `sap-wiki` wiki server (SAP internal network required for the latter).
 
 ### Stack
 
@@ -655,7 +655,7 @@ The `app/` directory contains a standalone web application for browser-based IAM
 |-----------|-----------|
 | Web framework | FastAPI + Uvicorn |
 | Chat streaming | Anthropic API (`claude-opus-4-7`), SSE |
-| ER6 tools | MCP subprocess over stdio (same `er6_mcp_server.py`) |
+| ER6 + wiki tools | MCP subprocesses over stdio — all servers from `.mcp.json` (`er6`, `sap-wiki`) started at app startup via `MCPMultiClient`; failed servers are non-fatal |
 | Auth | OIDC (Authlib) with signed session cookie; dev mode skips OIDC |
 | Templates | Jinja2 (`ui/templates/`) |
 | Static assets | `ui/static/` (CSS + JS) |
@@ -735,7 +735,7 @@ iam-assistant/
 │   ├── auth.py                 # OIDC auth routes and session dependency
 │   ├── chat.py                 # Anthropic streaming chat with MCP tool execution
 │   ├── config.py               # Pydantic settings (loaded from .env)
-│   ├── mcp_client.py           # MCP subprocess client (stdio protocol)
+│   ├── mcp_client.py           # MCPClient (generic stdio) + MCPMultiClient (aggregates all .mcp.json servers)
 │   └── requirements.txt        # Python dependencies for the web app
 ├── ui/
 │   ├── templates/index.html    # Jinja2 chat template
@@ -753,8 +753,7 @@ iam-assistant/
 │   └── test_mcp_client.py
 ├── scripts/
 │   ├── build_ppt.py                # Detailed technical overview PPT (mixed audience)
-│   ├── build_intro_ppt.py          # 8-slide intro PPT for business stakeholders → docs/IAM_Assistant_Intro.pptx
-│   └── sapwiki.py                  # SAP Confluence wiki fetcher (search + fetch); used by /iam-wiki skill
+│   └── build_intro_ppt.py          # 8-slide intro PPT for business stakeholders → docs/IAM_Assistant_Intro.pptx
 ├── docs/
 │   ├── IAM_Assistant_Overview.pptx # Technical overview presentation
 │   └── IAM_Assistant_Intro.pptx    # Business stakeholder introduction (run build_intro_ppt.py to regenerate)

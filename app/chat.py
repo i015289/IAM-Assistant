@@ -5,7 +5,7 @@ from typing import AsyncIterator
 import anthropic
 
 from app.config import settings
-from app.mcp_client import MCPClient
+from app.mcp_client import MCPClient, MCPMultiClient
 
 _SYSTEM_PROMPT = (Path(__file__).parent.parent / "CLAUDE.md").read_text()
 _CLIENT = anthropic.AsyncAnthropic(
@@ -16,7 +16,7 @@ _CLIENT = anthropic.AsyncAnthropic(
 
 async def stream_chat(
     messages: list[dict],
-    mcp: MCPClient,
+    mcp: MCPClient | MCPMultiClient,
 ) -> AsyncIterator[str]:
     """Yield SSE-formatted lines from a streaming Anthropic response.
 

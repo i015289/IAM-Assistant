@@ -1,4 +1,4 @@
-import asyncio
+import json
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -12,17 +12,29 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.auth import auth_router, get_current_user
 from app.chat import stream_chat
 from app.config import settings
-from app.mcp_client import MCPClient
+from app.mcp_client import MCPClient, MCPMultiClient
 
 _ROOT = Path(__file__).parent.parent
-_MCP_SCRIPT = str(_ROOT / "mcp-server" / "er6_mcp_server.py")
-_mcp: MCPClient | None = None
+_mcp: MCPMultiClient | None = None
+
+
+def _load_mcp_from_config() -> MCPMultiClient:
+    config_path = _ROOT / ".mcp.json"
+    config = json.loads(config_path.read_text())
+    clients: dict[str, MCPClient] = {}
+    for name, entry in config.get("mcpServers", {}).items():
+        clients[name] = MCPClient(
+            command=entry["command"],
+            args=entry.get("args", []),
+            env=entry.get("env"),
+        )
+    return MCPMultiClient(clients)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global _mcp
-    _mcp = MCPClient(_MCP_SCRIPT)
+    _mcp = _load_mcp_from_config()
     await _mcp.start()
     yield
     await _mcp.stop()

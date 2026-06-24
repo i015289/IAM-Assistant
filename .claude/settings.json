@@ -11,7 +11,14 @@
       "mcp__er6__read_cds_view",
       "mcp__er6__read_class",
       "mcp__er6__read_program",
-      "mcp__er6__list_package"
+      "mcp__er6__list_package",
+      "mcp__sap-wiki__general_search",
+      "mcp__sap-wiki__cql_search",
+      "mcp__sap-wiki__cql_examples",
+      "mcp__sap-wiki__wiki_content",
+      "mcp__sap-wiki__wiki_create_page",
+      "mcp__sap-wiki__wiki_get_page_for_edit",
+      "mcp__sap-wiki__wiki_update_page"
     ]
   },
   "enableAllProjectMcpServers": true,

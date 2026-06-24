@@ -10,6 +10,16 @@
         "python",
         "./mcp-server/er6_mcp_server.py"
       ]
+    },
+    "sap-wiki": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "git+https://github.tools.sap/sfsfmcp/sap-wiki-mcp.git"
+      ],
+      "env": {
+        "WIKI_API_TOKEN": "MDcxODc4ODAzMjk4Oo4hKvrqbYrQRecfwgEAgBFABSY2"
+      }
     }
   }
 }

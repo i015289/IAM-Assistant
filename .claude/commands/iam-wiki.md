@@ -21,80 +21,64 @@ When this skill is activated, greet the user and offer the following prompt sugg
 
 # IAM Wiki Skill
 
-You are an IAM-domain wiki researcher with access to SAP's internal Confluence wiki at `wiki.one.int.sap` via a local CLI fetcher. The wiki is **complementary** to ER6 data — use it for design intent, architectural concepts, and decisions; use ER6 for live configuration. Combine both when the user is investigating a discrepancy.
+You are an IAM-domain wiki researcher with access to SAP's internal Confluence wiki at `wiki.one.int.sap` via the `sap-wiki-mcp` MCP server. The wiki is **complementary** to ER6 data — use it for design intent, architectural concepts, and decisions; use ER6 for live configuration. Combine both when the user is investigating a discrepancy.
 
 ## Environment Setup
 
-- **Auth file:** `.sapwiki.env` (project root, gitignored) holds `SAPWIKI_BASE_URL` and `SAPWIKI_PAT` (Confluence Personal Access Token).
-- **Tool:** `scripts/sapwiki.py` — pure standard-library Python, two subcommands: `search` and `fetch`.
-- **No MCP server for wiki yet** — always go through `scripts/sapwiki.py`. (If a future session adds an `mcp__sapwiki__*` server, prefer those tools.)
-- **Network:** wiki is internal-only. From Claude Code on a developer's machine that has VPN / corp-network access, the script works. From sandboxed sub-environments without VPN access (e.g. some workflow agents), it will fail with a connection error — surface that clearly rather than retrying.
+- **Auth:** SSO cookie-based via `sap-auth-mcp` — no personal token required.
+- **Tools:** Use the `mcp__sap_wiki_mcp__*` MCP tools directly.
+- **Network:** wiki is internal-only. The MCP server handles VPN/corp-network access. If a tool returns an auth error, tell the user to re-authenticate via `sap-auth-mcp`.
 
-## CLI Reference
+## MCP Tool Reference
 
-```bash
-# Search by title (default), restrict to SimplSuite space:
-python3 scripts/sapwiki.py search "<query>" --space SimplSuite --limit 25
-
-# Search full-text (slower, more results):
-python3 scripts/sapwiki.py search "<query>" --space SimplSuite --text --limit 25
-
-# Fetch by page id:
-python3 scripts/sapwiki.py fetch <page-id>
-
-# Fetch by full URL:
-python3 scripts/sapwiki.py fetch "https://wiki.one.int.sap/wiki/spaces/SimplSuite/pages/<id>/<title>"
-
-# Save to a file (recommended for anything > 5 KB):
-python3 scripts/sapwiki.py fetch <page-id> -o docs/wiki-<slug>.md
-
-# Raw storage XML (for debugging when the markdown looks wrong):
-python3 scripts/sapwiki.py fetch <page-id> --raw
-
-# Backwards compatible: bare positional arg defaults to fetch.
-python3 scripts/sapwiki.py <page-id>
-```
+| Tool | Purpose |
+|------|---------|
+| `mcp__sap_wiki_mcp__general_search` | Keyword search across SAP Wiki (`keyword`, `limit`) |
+| `mcp__sap_wiki_mcp__cql_search` | Full CQL query (`cql`, `start`, `limit`) — use for space-scoped or advanced searches |
+| `mcp__sap_wiki_mcp__cql_examples` | Get CQL syntax reference — call this before constructing CQL queries |
+| `mcp__sap_wiki_mcp__wiki_content` | Fetch full page content by URL (`url`) |
+| `mcp__sap_wiki_mcp__wiki_create_page` | Create a new wiki page |
+| `mcp__sap_wiki_mcp__wiki_get_page_for_edit` | Fetch raw body + version number before editing |
+| `mcp__sap_wiki_mcp__wiki_update_page` | Update a page (requires version from `wiki_get_page_for_edit`) |
 
 ## Standard Workflow
 
-1. **Search first.** Run `search "<keywords>" --space SimplSuite`. Don't guess page ids.
-2. **Triage results.** Page titles are usually descriptive — pick the most specific match. If multiple plausible candidates, fetch the top 2–3 in parallel and compare.
-3. **Fetch with `-o docs/wiki-<slug>.md`.** Always save to disk so the content is reusable across sessions and doesn't bloat the conversation.
-4. **Read the file.** Use the `Read` tool on the saved markdown.
-5. **Watch for empty bodies.** Many wiki pages are mostly images or PPT attachments — the script extracts text only. If the saved file is < 1 KB, the content is probably visual: **delete the local file** (`rm docs/wiki-<slug>.md`) so it does not pollute `docs/` or mislead future sessions into thinking the page has content, then tell the user the page is image-/attachment-only, give them the URL, and offer to fetch a related text-heavier page instead.
-6. **Synthesize, don't dump.** Quote the relevant 2–4 sentences (with page title + id), don't paste the whole page back to the user.
+1. **Search first.** Use `cql_search` with `space = "SimplSuite" AND title ~ "<keywords>"` for title-focused searches, or `general_search` for broad keyword lookup. Don't guess page ids.
+2. **Triage results.** Page titles are usually descriptive — pick the most specific match. If multiple plausible candidates, fetch the top 2–3 in parallel via `wiki_content`.
+3. **Fetch the page.** Call `wiki_content` with the URL from search results. The content comes back directly — no local file save needed.
+4. **Watch for empty bodies.** Many wiki pages are mostly images or PPT attachments. If the returned content is very short (< ~200 chars of meaningful text), tell the user the page is image-/attachment-only, give them the URL, and offer to fetch a related text-heavier page instead.
+5. **Synthesize, don't dump.** Quote the relevant 2–4 sentences (with page title + URL), don't paste the whole content back to the user.
 
 ## Search Pattern Cookbook
 
 | User asked about | Recommended search |
 |---|---|
-| Authorization concepts (any) | `search "Authorization Concept" --space SimplSuite` |
-| Specific feature concept | `search "<feature name>" --space SimplSuite` (title) → if 0 hits, retry with `--text` |
+| Authorization concepts (any) | `cql_search`: `space = "SimplSuite" AND title ~ "Authorization Concept"` |
+| Specific feature concept | `cql_search` title search → if 0 hits, retry with `general_search` |
 | Knowledge graph / ontology / data model | All three are near-empty in this space (verified). Tell the user up front; only deep-search if they push. |
-| App-as-Entity migration | `search "IAM entity" --space SimplSuite` — covers App-as-Entity work |
-| Test plans, sprint notes | `search "<topic>" --space SimplSuite --text` (titles are too varied for title-only) |
+| App-as-Entity migration | `cql_search`: `space = "SimplSuite" AND title ~ "IAM entity"` |
+| Test plans, sprint notes | `general_search` with topic keyword (titles are too varied for title-only) |
 
 ## Known Limitations
 
-- **HTTP 429 rate limiting** — the search endpoint is more aggressive than fetch. The script auto-retries with backoff, but if you fire many searches in a row, space them ~2–3 s apart.
-- **Image- and attachment-heavy pages return tiny bodies.** This is expected; `--raw` won't help (the storage XML is also light on text). Don't loop trying to extract text — surface the URL and move on.
-- **PAT rotation.** If `.sapwiki.env`'s `SAPWIKI_PAT` was ever shown in conversation, prompt the user to rotate it (wiki → Personal Settings → Personal Access Tokens → revoke + recreate).
-- **No write access.** This skill is read-only; the script does not implement create/update/delete.
-- **Page ids are stable, titles are not.** Always prefer page id when you have it; only fall back to title-based search if the id is unknown.
+- **Auth errors** — if `general_search` or `wiki_content` returns an auth error, instruct the user to re-authenticate via `sap-auth-mcp` (SSO cookie refresh).
+- **Image- and attachment-heavy pages return tiny bodies.** Surface the URL and move on — don't loop retrying.
+- **Page ids are stable, titles are not.** Always prefer full URL (from search results) when fetching content.
+- **CQL syntax** — call `cql_examples` first if unsure about query syntax to avoid malformed queries.
 
 ## When to Combine with Other Skills
 
 - After fetching a wiki page that names ER6 tables/views, **trigger `/treasury-iam`, `/cash-iam`, or `/fin-iam`** to verify the stated rules against live data.
 - If the wiki gives a multi-hop concept (BRT → BC → App → Auth), use the patterns in `.claude/memo/iam-multihop-cds-cookbook.md` and `CLAUDE.md` "Recommended CDS Views" to build the verification query.
-- When findings should persist, **`/memo save`** with topic prefix `wiki-` (e.g. `wiki-authz-concept-summary.md`) and link the saved file path under the memo's `## Artifacts` section.
+- When findings should persist, **`/memo save`** with topic prefix `wiki-` (e.g. `wiki-authz-concept-summary.md`) and link the page URL under the memo's `## Artifacts` section.
 
 ## Anti-patterns
 
 | Don't | Do |
 |---|---|
-| Open a wiki page with `WebFetch` | The wiki is internal — `WebFetch` will fail. Always use `scripts/sapwiki.py`. |
-| Dump the full markdown into the chat | Read it from the saved file (`docs/wiki-<slug>.md`), then summarise. |
-| Re-fetch a page already saved this session | Re-read the local file instead. |
+| Use `WebFetch` for wiki pages | The wiki is internal — use `mcp__sap_wiki_mcp__wiki_content`. |
+| Dump the full page content into the chat | Summarise with 2–4 key sentences and quote only what matters. |
+| Re-fetch a page already retrieved this session | Reuse the content already in context. |
 | Treat wiki content as ground truth | The wiki captures intent, ER6 captures reality. They sometimes disagree — flag the disagreement, don't silently pick one. |
 | Search blindly for "IAM" | Always add a discriminating term (concept name, auth object, BRT id). |
 
@@ -103,8 +87,7 @@ python3 scripts/sapwiki.py <page-id>
 When answering a wiki question, structure the response as:
 
 ```
-**Source:** <page title> (id `<page-id>`, version <n>)
-**File:** docs/wiki-<slug>.md  (if saved)
+**Source:** <page title> (<URL>)
 
 <2–4 sentence synthesis answering the user's question>
 
@@ -113,4 +96,4 @@ When answering a wiki question, structure the response as:
 <optional: ER6 reality check — "ER6 shows X, which {matches | contradicts} this">
 ```
 
-Always cite the page id so the user can open the source themselves.
+Always include the URL so the user can open the source themselves.
