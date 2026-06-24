@@ -48,8 +48,8 @@ CLAUDE.md, skill files, and README are updated as new facts surface — undocume
 | Claude Code | `claude` CLI installed and authenticated |
 | MCP server | `er6` MCP server configured in `.mcp.json` (primary query path) |
 | conda | `sapcli-env` environment with `sapcli` installed (fallback only) |
-| `.sapcli.env` | Connection credentials for ER6 (not committed — fallback only) |
-| `sap-wiki` MCP | SAP Confluence wiki access for the `/iam-wiki` skill — configured in `.mcp.json` with an API token. Requires SAP internal network. |
+| `.sapcli.env` | Connection credentials for ER6 and the `WIKI_API_TOKEN` for `/iam-wiki` (not committed — CLI use) |
+| `sap-wiki` MCP | SAP Confluence wiki access for the `/iam-wiki` skill. Token read from `WIKI_API_TOKEN` env var (set in `.sapcli.env` for CLI, `.env` for Web UI). Requires SAP internal network. |
 
 ## Setup
 
@@ -674,6 +674,7 @@ OIDC_CLIENT_SECRET=your-client-secret
 OIDC_DISCOVERY_URL=https://your-idp/.well-known/openid-configuration
 SESSION_SECRET=a-long-random-string
 BASE_URL=http://localhost:8080
+WIKI_API_TOKEN=<sap-wiki-api-token>           # Required for /iam-wiki; SAP internal network only
 ```
 
 **Dev mode:** Set `OIDC_CLIENT_ID=your-client-id` (the placeholder default) to skip OIDC and auto-log in as `ANZEIGER`.

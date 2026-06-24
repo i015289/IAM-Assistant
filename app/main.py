@@ -1,4 +1,6 @@
 import json
+import os
+import re
 from contextlib import asynccontextmanager
 from pathlib import Path
 
@@ -18,6 +20,15 @@ _ROOT = Path(__file__).parent.parent
 _mcp: MCPMultiClient | None = None
 
 
+def _resolve_env(raw: dict[str, str]) -> dict[str, str]:
+    """Expand ${VAR} placeholders using os.environ + settings-loaded secrets."""
+    subs = {**os.environ}
+    if settings.wiki_api_token is not None:
+        subs["WIKI_API_TOKEN"] = settings.wiki_api_token.get_secret_value()
+    return {k: re.sub(r"\$\{(\w+)\}", lambda m: subs.get(m.group(1), ""), v)
+            for k, v in raw.items()}
+
+
 def _load_mcp_from_config() -> MCPMultiClient:
     config_path = _ROOT / ".mcp.json"
     config = json.loads(config_path.read_text())
@@ -26,7 +37,7 @@ def _load_mcp_from_config() -> MCPMultiClient:
         clients[name] = MCPClient(
             command=entry["command"],
             args=entry.get("args", []),
-            env=entry.get("env"),
+            env=_resolve_env(entry.get("env") or {}),
         )
     return MCPMultiClient(clients)
 

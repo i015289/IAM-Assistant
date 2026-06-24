@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     session_secret: SecretStr
     base_url: str
     llm_model: str = "claude-opus-4-7"
+    wiki_api_token: SecretStr | None = None
 
 
 settings = Settings()
