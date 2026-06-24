@@ -48,8 +48,8 @@ CLAUDE.md, skill files, and README are updated as new facts surface — undocume
 | Claude Code | `claude` CLI installed and authenticated |
 | MCP server | `er6` MCP server configured in `.mcp.json` (primary query path) |
 | conda | `sapcli-env` environment with `sapcli` installed (fallback only) |
-| `.sapcli.env` | Connection credentials for ER6 and the `WIKI_API_TOKEN` for `/iam-wiki` (not committed — CLI use) |
-| `sap-wiki` MCP | SAP Confluence wiki access for the `/iam-wiki` skill. Token read from `WIKI_API_TOKEN` env var (set in `.sapcli.env` for CLI, `.env` for Web UI). Requires SAP internal network. |
+| `.sapcli.env` | ER6 connection credentials + `WIKI_API_TOKEN` for CLI use (not committed) |
+| `sap-wiki` MCP | SAP Confluence wiki access for the `/iam-wiki` skill. Token read from `WIKI_API_TOKEN` — set in `.sapcli.env` (CLI) or `.env` (Web UI). Requires SAP internal network. |
 
 ## Setup
 
