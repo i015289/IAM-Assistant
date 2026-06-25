@@ -520,6 +520,7 @@ def slide_what_is(prs, page_num, total):
         body=(
             "Interactive command-line assistant powered by Claude Opus.\n\n"
             "•  Domain skills: /treasury-iam, /cash-iam, /fin-iam\n"
+            "•  Wiki researcher: /iam-wiki (SAP Confluence via sap-wiki MCP)\n"
             "•  Goal-driven autonomous agent: /goal + /execute\n"
             "•  Persistent memo system: /memo\n"
             "•  Quality enforcement via three lifecycle hooks\n"
@@ -538,6 +539,8 @@ def slide_what_is(prs, page_num, total):
         body=(
             "Browser-based chat UI built on FastAPI.\n\n"
             "•  Same Claude model, same MCP tools as the CLI\n"
+            "•  ER6 + SAP Wiki access via MCPMultiClient (er6 + sap-wiki)\n"
+            "•  Header shows ER6 and Wiki connection status independently\n"
             "•  OIDC authentication; per-user sessions\n"
             "•  Light / Dark theme (Catppuccin Latte / Mocha)\n"
             "•  Categorised prompt template library\n"
@@ -698,7 +701,7 @@ def slide_skills(prs, page_num, total):
              "Activated explicitly  (e.g. /treasury-iam)  or automatically by keyword match.",
              font_size=12, color=GREY_MED, align=PP_ALIGN.CENTER)
     add_text(slide, Inches(0.5), Inches(6.85), Inches(12.3), Inches(0.4),
-             "Plus  /iam-wiki  — SAP Confluence wiki researcher (CLI-only; not exposed in the Web UI).",
+             "Plus  /iam-wiki  — SAP Confluence wiki researcher (available in both CLI and Web UI; SAP internal network required).",
              font_size=11, color=GREY_MED, align=PP_ALIGN.CENTER)
 
     add_footer(slide, page_num, total)
@@ -1336,7 +1339,7 @@ def slide_mcp_tools(prs, page_num, total):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     set_slide_background(slide, BG_LIGHT)
     add_header_bar(slide, "MCP Tool Layer",
-                   "Six ER6 tools exposed to Claude over stdio")
+                   "ER6 data tools + SAP Wiki research tools — all over stdio")
 
     headers = ["Tool", "Purpose", "Typical use", "Mean latency"]
     rows = [
@@ -1368,24 +1371,22 @@ def slide_mcp_tools(prs, page_num, total):
     add_table(slide, Inches(0.4), Inches(1.55), Inches(12.5), Inches(2.6),
               headers, rows, body_size=11, header_size=12)
 
-    # Constraints box
-    add_text(slide, Inches(0.4), Inches(4.35), Inches(12.5), Inches(0.4),
-             "ABAP Open SQL constraints  ·  what Claude knows to avoid",
-             font_size=15, bold=True, color=NAVY)
-
-    constraints = [
-        ("No JOINs.", "Run separate queries; correlate in memory — or use a CDS view that pre-joins."),
-        ("No subqueries.", "Same — break into multiple round-trips."),
-        ("No table aliases (AS x).", "Same error as JOIN — refer to columns by unqualified name."),
-        ("Long IN(...) lists fail at ~255 chars.", "Use LIKE '<prefix>%' or BETWEEN '<lo>' AND '<hi>' instead."),
-        ("UP TO N ROWS + WHERE is rejected.", "Use the rows parameter on query_sql instead — always safe."),
-        ("APS_IAM_W_BUC is not directly queryable.", "Use CDS view I_APS_BUSINESS_CATALOG (preferred), or raw APS_IAM_W_BRTBUC / W_BC_APP."),
-        ("SUI_TM_MM_APP stores Treasury app IDs as GUIDs.", "Use APS_IAM_W_BC_APP for app-name lookups."),
-        ("Active vs superseded instances.", "INACTIVE = blank means active; INACTIVE = 'X' means superseded."),
+    # sap-wiki tools
+    add_text(slide, Inches(0.4), Inches(4.3), Inches(12.5), Inches(0.35),
+             "sap-wiki MCP  ·  SAP Confluence research (available in CLI and Web UI — SAP internal network required)",
+             font_size=13, bold=True, color=NAVY)
+    wiki_headers = ["Tool", "Purpose"]
+    wiki_rows = [
+        ["mcp__sap-wiki__general_search", "Keyword search across SAP Confluence"],
+        ["mcp__sap-wiki__cql_search",     "Advanced CQL query search"],
+        ["mcp__sap-wiki__wiki_content",   "Fetch full page content by URL"],
+        ["mcp__sap-wiki__cql_examples",   "Get CQL syntax examples and reference"],
     ]
-    add_bullets(slide, Inches(0.4), Inches(4.8), Inches(12.5), Inches(2.2),
-                constraints, font_size=11, bullet_color=ACCENT2)
+    add_table(slide, Inches(0.4), Inches(4.7), Inches(12.5), Inches(1.55),
+              wiki_headers, wiki_rows, body_size=11, header_size=12)
+
     add_footer(slide, page_num, total)
+
 
 
 def slide_skill_files(prs, page_num, total):
@@ -1899,7 +1900,7 @@ def slide_webui_detail(prs, page_num, total):
     stack = [
         ["Web framework", "FastAPI + Uvicorn"],
         ["LLM streaming", "Anthropic SDK · SSE · Claude Opus"],
-        ["MCP tools", "Subprocess over stdio (er6_mcp_server.py)"],
+        ["MCP tools", "Subprocess over stdio — er6 (6 tools) + sap-wiki (4 tools)"],
         ["Auth", "OIDC (Authlib) · signed session cookie"],
         ["Templates", "Jinja2  ·  ui/templates/"],
         ["Static assets", "ui/static/  (CSS + JS, no bundler)"],
@@ -1920,7 +1921,8 @@ def slide_webui_detail(prs, page_num, total):
         ("Session history.", "Multiple sessions per user with rename/delete."),
         ("OIDC + dev mode.", "Real OIDC in prod  ·  auto-login as 'dev' for local."),
         ("Tool call transparency.", "Every MCP call is shown — table, params, result rows."),
-        ("Scope: live ER6 only.", "/iam-wiki and SAP Confluence access are CLI-only — wiki is a research surface, not an end-user one."),
+        ("Wiki access.", "/iam-wiki and SAP Confluence available in both CLI and Web UI via sap-wiki MCP."),
+        ("Connection status.", "Header shows ER6 and Wiki status independently (green = connected)."),
         ("Vendored libs.", "marked + DOMPurify shipped locally — zero CDN dependency."),
     ]
     add_bullets(slide, Inches(6.85), Inches(2.0), Inches(6.0), Inches(4.8),
