@@ -111,6 +111,13 @@ class MCPMultiClient:
         for client in self._clients.values():
             await client.stop()
 
+    def is_alive(self, name: str) -> bool:
+        """Return True if the named MCP server process is running."""
+        client = self._clients.get(name)
+        if client is None:
+            return False
+        return client._proc is not None and client._proc.returncode is None
+
     # Expose proc status of primary client for health check in main.py
     @property
     def _proc(self):

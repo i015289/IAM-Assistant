@@ -691,6 +691,18 @@ conda run -n sapcli-env uvicorn app.main:app --reload
 
 Then open `http://localhost:8080` in your browser.
 
+### Header Status Indicators
+
+The header shows three status indicators next to the model name and username:
+
+| Indicator | What it shows |
+|-----------|--------------|
+| `● ER6 connected/disconnected` | Whether the `er6` MCP subprocess is alive |
+| `● Wiki connected/disconnected` | Whether the `sap-wiki` MCP subprocess is alive |
+| `Model: <name>` | Active LLM model |
+
+Both MCP statuses are checked independently at page load via `MCPMultiClient.is_alive(name)`. The Wiki indicator is green only when the `sap-wiki` process is running and the `WIKI_API_TOKEN` is configured — if the token is missing or the SAP internal network is unreachable, it shows as disconnected.
+
 ### Theme
 
 The header has a Light / Dark toggle (next to the logo). The default is **Light** (Catppuccin Latte); clicking it switches to **Dark** (Catppuccin Mocha) and the choice is persisted in `localStorage`. An inline `<head>` script applies the saved theme before the stylesheet loads, so reloading never flashes the wrong palette.
@@ -736,7 +748,7 @@ iam-assistant/
 │   ├── auth.py                 # OIDC auth routes and session dependency
 │   ├── chat.py                 # Anthropic streaming chat with MCP tool execution
 │   ├── config.py               # Pydantic settings (loaded from .env)
-│   ├── mcp_client.py           # MCPClient (generic stdio) + MCPMultiClient (aggregates all .mcp.json servers)
+│   ├── mcp_client.py           # MCPClient (generic stdio) + MCPMultiClient (aggregates all .mcp.json servers, per-server is_alive())
 │   └── requirements.txt        # Python dependencies for the web app
 ├── ui/
 │   ├── templates/index.html    # Jinja2 chat template

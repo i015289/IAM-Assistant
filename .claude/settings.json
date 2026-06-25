@@ -15,10 +15,7 @@
       "mcp__sap-wiki__general_search",
       "mcp__sap-wiki__cql_search",
       "mcp__sap-wiki__cql_examples",
-      "mcp__sap-wiki__wiki_content",
-      "mcp__sap-wiki__wiki_create_page",
-      "mcp__sap-wiki__wiki_get_page_for_edit",
-      "mcp__sap-wiki__wiki_update_page"
+      "mcp__sap-wiki__wiki_content"
     ]
   },
   "enableAllProjectMcpServers": true,

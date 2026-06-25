@@ -78,10 +78,12 @@ async def health():
 @app.get("/", response_class=HTMLResponse)
 async def root(request: Request, user: dict = Depends(get_current_user)):
     mcp_alive = _mcp is not None and (_mcp._proc is None or _mcp._proc.returncode is None)
+    wiki_alive = _mcp is not None and _mcp.is_alive("sap-wiki")
     return _render(
         "index.html",
         username=user["preferred_username"],
         mcp_status="connected" if mcp_alive else "disconnected",
+        wiki_status="connected" if wiki_alive else "disconnected",
         llm_model=settings.llm_model,
     )
 
